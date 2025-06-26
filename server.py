@@ -13,6 +13,10 @@ PROGRESS_FILE = "progress.json"
 def home():
   return render_template("index.html")
 
+@app.route('/practice')
+def practice():
+  return render_template("practice.html")
+
 @app.route('/run-script', methods=['POST'])
 def run_script():
   try:
