@@ -26,6 +26,18 @@
         gap: 3px;
         grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
       }
+      #go-home {
+        position: absolute;
+        right: 100px;
+        top: 30px;
+        padding: 5px;
+      }
+      #go-practice {
+        position: absolute;
+        right: 30px;
+        top: 30px;
+        padding: 5px;
+      }
       ul {
         list-style-type: none;
         padding: 0;
@@ -46,17 +58,23 @@
         height: 200px;
         margin: 5px;
         border: 1px solid gray;
-        border-color: black;
         text-align: center;
-        padding: 2px;
         overflow-wrap: break-word;
         overflow-y: hidden;
         text-align: center;
+      }
+      .navigation:hover {
+        background-color: lightblue;
+        cursor: default;
+        color: black;
+        text-decoration: none;
       }
     </style>
   </head>
   <body>
     <h1>Karuta Practice</h1>
+    <a href="/"><div id="go-home" class="navigation">Home</div></a>
+    <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
     <input type="text" id="playlistUrl" placeholder="Enter YouTube playlist URL"/>
     <button id="runScript">Download & Convert Playlist</button>
     <button id="clearSongs">Clear Songs Folder</button>
@@ -68,12 +86,11 @@
     <select id="playlistSelect"></select>
     <button id="loadPlaylist">Load Playlist</button>
     <button id="generateDeck">Generate Deck</button>
-    <h2>Now Playing:</h2>
-    <p id="currentSong">None</p>
+    <hr></hr>
     <button id="pauseSong">Pause/Resume Current Song</button>
     <button id="playRandom">Play Random Song</button>
     <button id="resetPlayed">Reset Played Songs</button>
-    <h2>Game Space</h2>
+    <h2>Game</h2>
     <div id="game-space"></div>
     <h2>Autoplay Settings</h2>
     <label for="autoplaySlider">Play Duration (seconds): </label>
@@ -94,8 +111,11 @@
     </p>
 
     <h2>Audio Player</h2>
-    <button id="toggleAudioPlayer">Toggle Audio Player Visibility</button><br>
-    <audio id="audioPlayer" controls></audio>
+    <button id="toggleAudioPlayer">Hide Audio Player Visibility</button><br>
+    <div id="audio">
+      <p id="currentSong">None</p>
+      <audio id="audioPlayer" controls></audio>
+    </div>
     <h2>Played Songs from Loaded Playlist</h2>
     <button id="togglePlaylistVisibility">Toggle Playlist Visibility</button>
     <ul id="played-song-list"></ul>
@@ -108,7 +128,7 @@
       let countdownInterval = null;
       let loadedPlaylist = [];
       let deckIsGenerated = false;
-      let deckList = [];
+      let deckList = {};
 
       function getDisplayName(song) {
         return song.endsWith(".mp3") ? song.slice(0, -4) : song;
@@ -345,10 +365,14 @@
       });
 
       document.getElementById("toggleAudioPlayer").addEventListener("click", function () {
-        let audios = document.querySelectorAll("audio");
-        audios.forEach(audio => {
-          audio.style.display = (audio.style.display === "none") ? "block" : "none";
-        });
+        let audio = document.getElementById("audio");
+        if (audio.style.display === "none") {
+          audio.style.display = "block";
+          document.getElementById("toggleAudioPlayer").innerHTML = "Hide Audio Player Visibility";
+        } else {
+          audio.style.display = "none";
+          document.getElementById("toggleAudioPlayer").innerHTML = "Show Audio Player Visibility";
+        }
       });
 
       document.getElementById("togglePlaylistVisibility").addEventListener("click", function () {
@@ -410,28 +434,34 @@
           return;
         }
 
-        deckList = []
+        deckList = {}
 
         let remainingIndices = [...Array(deckLength).keys()];
-        while (deckList.length < deckLength) {
-          nextIndex = Math.floor(Math.random() * remainingIndices.length);
-          deckList.push(loadedPlaylist[remainingIndices[nextIndex]]);
+        while (Object.keys(deckList).length < deckLength) {
+          let nextIndex = Math.floor(Math.random() * remainingIndices.length);
+          let nextSongTitle = loadedPlaylist[remainingIndices[nextIndex]];
+          deckList[nextSongTitle] = {"title": nextSongTitle}
           remainingIndices = remainingIndices.slice(0, nextIndex).concat(remainingIndices.slice(nextIndex + 1));
         }
-        console.log(deckList);
 
         let gameSpace = document.getElementById("game-space"); 
         gameSpace.innerHTML = "";
-        deckList.forEach((songTitle) => {
+        Object.keys(deckList).forEach((songTitle) => {
           let songCard = document.createElement("div");
           
           songCard.className = "card";
+          songCard.id = songTitle;
           if (songTitle.slice(-4) != ".mp3") {
             console.log(`${songTitle} missing .mp3 extension`);
             songCard.innerHTML = songTitle;
           } else {
             songCard.innerHTML = songTitle.slice(0, -4);
           }
+
+          // add some onclick events i guess
+          // in the function --> match audio player to id of clicked-card
+          // maybe the penalty should be adding the next card from the running list?
+          // store speed in deckList dictionary?
 
           gameSpace.appendChild(songCard);
         });
