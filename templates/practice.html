@@ -18,6 +18,14 @@
         text-align: center;
         color: white;
       }
+      #game-space {
+        border: 2px solid black;
+        width: 100%;
+        height: auto;
+        display: grid;
+        gap: 3px;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      }
       ul {
         list-style-type: none;
         padding: 0;
@@ -33,6 +41,18 @@
       li:hover {
         background-color: #f0f0f0;
       }
+      .card {
+        width: 90px;
+        height: 200px;
+        margin: 5px;
+        border: 1px solid gray;
+        border-color: black;
+        text-align: center;
+        padding: 2px;
+        overflow-wrap: break-word;
+        overflow-y: hidden;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -47,14 +67,14 @@
     <h2>Downloaded Playlists</h2>
     <select id="playlistSelect"></select>
     <button id="loadPlaylist">Load Playlist</button>
+    <button id="generateDeck">Generate Deck</button>
     <h2>Now Playing:</h2>
     <p id="currentSong">None</p>
     <button id="pauseSong">Pause/Resume Current Song</button>
     <button id="playRandom">Play Random Song</button>
     <button id="resetPlayed">Reset Played Songs</button>
-    <div id="game-space">
-      yeah idk lol we'll figure it out
-    </div>
+    <h2>Game Space</h2>
+    <div id="game-space"></div>
     <h2>Autoplay Settings</h2>
     <label for="autoplaySlider">Play Duration (seconds): </label>
     <input type="range" id="autoplaySlider" min="0" max="60" value="30"/>
@@ -87,6 +107,8 @@
       let autoplayTimer = null;
       let countdownInterval = null;
       let loadedPlaylist = [];
+      let deckIsGenerated = false;
+      let deckList = [];
 
       function getDisplayName(song) {
         return song.endsWith(".mp3") ? song.slice(0, -4) : song;
@@ -302,6 +324,7 @@
           return;
         }
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
+        console.log("random song: " + randomSong);
         playSong(randomSong);
       });
 
@@ -371,6 +394,49 @@
             alert("Playlist loaded with " + loadedPlaylist.length + " songs.");
           })
           .catch((error) => console.error("Error:", error));
+      });
+
+      document.getElementById("generateDeck").addEventListener("click", function () {
+        let deckLength = (loadedPlaylist.length > 80) ? 50 : Math.floor(loadedPlaylist.length / 4) * 2;
+        if (deckLength == 0) {
+          alert("Please load a deck first.");
+          return;
+        }
+        if (deckIsGenerated && !confirm("Are you sure you want to generate a new deck?")) {
+          return;
+        }
+        if (deckLength > loadedPlaylist.length) {
+          alert("Advancement: How did we get here? (debug)");
+          return;
+        }
+
+        deckList = []
+
+        let remainingIndices = [...Array(deckLength).keys()];
+        while (deckList.length < deckLength) {
+          nextIndex = Math.floor(Math.random() * remainingIndices.length);
+          deckList.push(loadedPlaylist[remainingIndices[nextIndex]]);
+          remainingIndices = remainingIndices.slice(0, nextIndex).concat(remainingIndices.slice(nextIndex + 1));
+        }
+        console.log(deckList);
+
+        let gameSpace = document.getElementById("game-space"); 
+        gameSpace.innerHTML = "";
+        deckList.forEach((songTitle) => {
+          let songCard = document.createElement("div");
+          
+          songCard.className = "card";
+          if (songTitle.slice(-4) != ".mp3") {
+            console.log(`${songTitle} missing .mp3 extension`);
+            songCard.innerHTML = songTitle;
+          } else {
+            songCard.innerHTML = songTitle.slice(0, -4);
+          }
+
+          gameSpace.appendChild(songCard);
+        });
+
+        deckIsGenerated = true;
       });
 
       loadPlaylistsList();
