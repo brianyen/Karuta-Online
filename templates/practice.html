@@ -20,11 +20,20 @@
       }
       #game-space {
         border: 2px solid black;
+        position: relative;
         width: 100%;
         height: auto;
         display: grid;
         gap: 3px;
         grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      }
+      #stats-box {
+        position: absolute;
+        right: 0%;
+        width: 30%;
+        bottom: -200px;
+        height: 180px;
+        border: 1px solid gray;
       }
       #go-home {
         position: absolute;
@@ -132,7 +141,8 @@
       let cardsLeft = 0;
       
       let songStart = 0;
-      let timeElapsed = 0;
+
+      let stats = {}
 
       let correct = true;
 
@@ -277,10 +287,15 @@
             toReroll.style.borderColor = "white";
             cardsLeft--;
           }
+          let timeForCard = Math.round(performance.now() - songStart); 
           deckList[playedSongsOrder[0]]["status"] = "rerolled";
-          deckList[playedSongsOrder[0]]["timeTaken"] = performance.now() - songStart;
-          timeElapsed += performance.now() - songStart;
+          deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
+          stats["timetaken"] += timeForCard;
+          stats["lastCard"] = timeForCard;
+          stats["rerolls"] += 1;
         }
+
+        updateStatsBox();
 
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
 
@@ -384,10 +399,15 @@
             toReroll.style.borderColor = "white";
             cardsLeft--;
           }
+          let timeForCard = Math.round(performance.now() - songStart); 
           deckList[playedSongsOrder[0]]["status"] = "rerolled";
-          deckList[playedSongsOrder[0]]["timeTaken"] = performance.now() - songStart;
-          timeElapsed += performance.now() - songStart;
+          deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
+          stats["timetaken"] += timeForCard;
+          stats["lastCard"] = timeForCard;
+          stats["rerolls"] += 1;
         }
+
+        updateStatsBox();
 
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
         console.log("random song: " + randomSong);
@@ -483,6 +503,14 @@
           return;
         }
 
+        stats = {
+          "errors": 0,
+          "rerolls": 0,
+          "correct": 0,
+          "timetaken": 0,
+          "lastCard": 0
+        }
+
         deckList = {}
         cardsLeft = deckLength;
 
@@ -496,6 +524,14 @@
 
         let gameSpace = document.getElementById("game-space"); 
         gameSpace.innerHTML = "";
+
+        let statsBox = document.createElement("pre");
+        statsBox.id = "stats-box";
+
+        gameSpace.appendChild(statsBox);
+
+        updateStatsBox();
+
         Object.keys(deckList).forEach((songTitle) => {
           gameSpace.appendChild(createCardElement(songTitle));
         });
@@ -517,44 +553,28 @@
           event.target.style.borderColor = "white";
           cardsLeft--;
 
-          let timeForCard = performance.now() - songStart;
+          let timeForCard = Math.round(performance.now() - songStart); 
           deckList[chosenTitle]["timeTaken"] = timeForCard;
           deckList[chosenTitle]["status"] = "correct";
-          timeElapsed += timeForCard;
+          stats["correct"] += 1;
+          stats["timetaken"] += timeForCard;
+          stats["lastCard"] = timeForCard;
 
           if (cardsLeft == 0) {
-            let correct = 0;
-            let errors = 0;
-            let rerolls = 0;
-            Object.keys(deckList).forEach(title => {
-              card = deckList[title];
-              if ("status" in card) {
-                if (card["status"] == "rerolled") {
-                  rerolls++;
-                } else if (card["status"] == "correct") {
-                  correct++;
-                }
-              }
-              if ("mistakes" in card) {
-                errors += card["mistakes"];
-              }
-            })
-            alert(`debug: now this is epical, time is ${timeElapsed / 1000}\n
-                you got ${correct} correct\n
-                you made ${errors} errors\n
-                you received ${rerolls} rerolls`);
+            alert(`debug: now this is epical, time is ${stats["timetaken"] / 1000}\n
+                you got ${stats["correct"]} correct\n
+                you made ${stats["errors"]} errors\n
+                you received ${stats["rerolls"]} rerolls`);
           }
         } else if (!correct) {
           let songDict = deckList[chosenTitle];
-          if (!("mistakes" in songDict)) {
-            songDict["mistakes"] = 1;
-          } else {
-            songDict["mistakes"]++;
-          }
+          stats["errors"] += 1;
           if (addNextCard()) {
             cardsLeft++;
           }
         }
+
+        updateStatsBox();
       }
 
       function addNextCard(toReplace = null) {
@@ -595,6 +615,10 @@
         deckList[songTitle] = {}
 
         return songCard;
+      }
+
+      function updateStatsBox() {
+        document.getElementById("stats-box").innerHTML = JSON.stringify(stats, null, 2).replace(/[{}"]/g, "");
       }
 
       loadPlaylistsList();
