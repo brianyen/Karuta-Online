@@ -125,10 +125,18 @@
       <audio id="audioPlayer" controls></audio>
     </div>
     <h2>Played Songs from Loaded Playlist</h2>
-    <button id="togglePlaylistVisibility">Toggle Playlist Visibility</button>
-    <ul id="played-song-list"></ul>
-    <h2>Loaded Playlist Songs (Unplayed)</h2>
-    <ul id="song-list"></ul>
+    <button id="togglePlaylistVisibility">Hide Playlist Visibility</button>
+    <div id="playlists">
+      <ul id="played-song-list"></ul>
+      <h2>Loaded Playlist Songs (Unplayed)</h2>
+      <ul id="song-list"></ul>
+    </div>
+    
+    <h2>Individual Card Stats</h2>
+    <button id="toggleStatsVisibility">Hide Card Stats</button>
+    <div id="card-stats">
+      testing 123
+    </div>
 
     <script>
       let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
@@ -393,23 +401,28 @@
         document.getElementById("sliderValue").innerText = this.value;
       });
 
-      document.getElementById("toggleAudioPlayer").addEventListener("click", function () {
-        let audio = document.getElementById("audio");
-        if (audio.style.display === "none") {
-          audio.style.display = "block";
-          document.getElementById("toggleAudioPlayer").innerHTML = "Hide Audio Player Visibility";
-        } else {
-          audio.style.display = "none";
-          document.getElementById("toggleAudioPlayer").innerHTML = "Show Audio Player Visibility";
-        }
+      document.getElementById("toggleAudioPlayer").addEventListener("click", function (event) {
+        toggleDivVisibility(event, "audio", "Audio Player");
       });
 
-      document.getElementById("togglePlaylistVisibility").addEventListener("click", function () {
-        let uls = document.querySelectorAll("ul");
-        uls.forEach(ul => {
-          ul.style.display = (ul.style.display === "none") ? "block" : "none";
-        });
+      document.getElementById("togglePlaylistVisibility").addEventListener("click", function (event) {
+        toggleDivVisibility(event, "playlists", "Playlist");
       });
+
+      document.getElementById("toggleStatsVisibility").addEventListener("click", function(event) {
+        toggleDivVisibility(event, "card-stats", "Card");
+      });
+
+      function toggleDivVisibility(event, toToggle, toggleText) {
+        let toggleEl = document.getElementById(toToggle);
+        if (toggleEl.style.display === "none") {
+          toggleEl.style.display = "block";
+          event.target.innerHTML = `Hide ${toggleText} Visibility`;
+        } else {
+          toggleEl.style.display = "none";
+          event.target.innerHTML = `Show ${toggleText} Visibility`;
+        }
+      }
 
       setInterval(updateProgress, 2000);
 
