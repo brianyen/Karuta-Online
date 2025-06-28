@@ -492,12 +492,16 @@
         deckList = {}
         cardsLeft = deckLength;
 
-        let remainingIndices = [...Array(deckLength).keys()];
-        while (Object.keys(deckList).length < deckLength) {
-          let nextIndex = Math.floor(Math.random() * remainingIndices.length);
-          let nextSongTitle = loadedPlaylist[remainingIndices[nextIndex]];
-          deckList[nextSongTitle] = {"title": nextSongTitle}
-          remainingIndices = remainingIndices.slice(0, nextIndex).concat(remainingIndices.slice(nextIndex + 1));
+        let songsCopy = loadedPlaylist.slice();
+        let p1 = songsCopy.length;
+        while (p1 != 0) {
+          let p2 = Math.floor(Math.random() * p1);
+          p1--;
+
+          [songsCopy[p1], songsCopy[p2]] = [songsCopy[p2], songsCopy[p1]];
+        }
+        for (i = 0; i < deckLength; i++) {
+          deckList[songsCopy[i]] = {};
         }
 
         let gameSpace = document.getElementById("game-space"); 
