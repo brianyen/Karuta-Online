@@ -287,6 +287,7 @@
         songStart = performance.now();
         correct = false;
 
+        console.log(cardsLeft)
         playSong(randomSong);
       }
 
@@ -377,6 +378,7 @@
           console.log("rerolling card");
           let toReroll = document.getElementById(playedSongsOrder[0]);
           if (!addNextCard(toReroll)) {
+            console.log("trying to decrement")
             toReroll.removeEventListener("click", handleSongChoice);
             toReroll.innerHTML = "";
             toReroll.style.borderColor = "white";
@@ -393,6 +395,7 @@
         songStart = performance.now();
         correct = false;
 
+        console.log(cardsLeft)
         playSong(randomSong);
       });
 
@@ -501,6 +504,9 @@
       });
 
       function handleSongChoice(event) {
+        if (playedSongsOrder.length < 1) {
+          return;
+        }
         chosenTitle = event.target.id;
         currentSong = playedSongsOrder[0];
         
@@ -530,21 +536,21 @@
                 }
               }
               if ("mistakes" in card) {
-                errors += card["mistkaes"].length;
+                errors += card["mistakes"];
               }
             })
-            alert(`debug: now this is epical, time is ${timeElapsed}\n
+            alert(`debug: now this is epical, time is ${timeElapsed / 1000}\n
                 you got ${correct} correct\n
                 you made ${errors} errors\n
                 you received ${rerolls} rerolls`);
           }
         } else {
           if (addNextCard()) {
-            let songDict = deckList[currentSong];
-            if (!("mistakes" in Object.keys(songDict))) {
-              songDict["mistakes"] = [];
+            let songDict = deckList[chosenTitle];
+            if (!("mistakes" in songDict)) {
+              songDict["mistakes"] = 0;
             } else {
-              songDict["mistakes"].push(chosenTitle);
+              songDict["mistakes"]++;
             }
             cardsLeft++;
           }
@@ -568,8 +574,6 @@
           document.getElementById("game-space").replaceChild(createCardElement(nextCardTitle), toReplace);
         }
 
-        deckList[nextCardTitle] = {}
-
         return true;
       }
 
@@ -587,6 +591,8 @@
         } else {
           songCard.innerHTML = songTitle.slice(0, -4);
         }
+
+        deckList[songTitle] = {}
 
         return songCard;
       }
