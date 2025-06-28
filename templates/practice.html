@@ -545,13 +545,13 @@
                 you received ${rerolls} rerolls`);
           }
         } else {
+          let songDict = deckList[chosenTitle];
+          if (!("mistakes" in songDict)) {
+            songDict["mistakes"] = 1;
+          } else {
+            songDict["mistakes"]++;
+          }
           if (addNextCard()) {
-            let songDict = deckList[chosenTitle];
-            if (!("mistakes" in songDict)) {
-              songDict["mistakes"] = 0;
-            } else {
-              songDict["mistakes"]++;
-            }
             cardsLeft++;
           }
         }
