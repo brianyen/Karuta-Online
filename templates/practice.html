@@ -278,24 +278,7 @@
           return;
         }
 
-        if (!correct && playedSongsOrder.length > 0 && Object.keys(deckList).includes(playedSongsOrder[0])) {
-          console.log("rerolling card");
-          let toReroll = document.getElementById(playedSongsOrder[0]);
-          if (!addNextCard(toReroll)) {
-            toReroll.removeEventListener("click", handleSongChoice);
-            toReroll.innerHTML = "";
-            toReroll.style.borderColor = "white";
-            cardsLeft--;
-          }
-          let timeForCard = Math.round(performance.now() - songStart); 
-          deckList[playedSongsOrder[0]]["status"] = "rerolled";
-          deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
-          stats["timetaken"] += timeForCard;
-          stats["lastCard"] = timeForCard;
-          stats["rerolls"] += 1;
-        }
-
-        updateStatsBox();
+        handlePreviousSong();
 
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
 
@@ -389,25 +372,7 @@
           return;
         }
 
-        if (!correct && playedSongsOrder.length > 0 && Object.keys(deckList).includes(playedSongsOrder[0])) {
-          console.log("rerolling card");
-          let toReroll = document.getElementById(playedSongsOrder[0]);
-          if (!addNextCard(toReroll)) {
-            console.log("trying to decrement")
-            toReroll.removeEventListener("click", handleSongChoice);
-            toReroll.innerHTML = "";
-            toReroll.style.borderColor = "white";
-            cardsLeft--;
-          }
-          let timeForCard = Math.round(performance.now() - songStart); 
-          deckList[playedSongsOrder[0]]["status"] = "rerolled";
-          deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
-          stats["timetaken"] += timeForCard;
-          stats["lastCard"] = timeForCard;
-          stats["rerolls"] += 1;
-        }
-
-        updateStatsBox();
+        handlePreviousSong();
 
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
         console.log("random song: " + randomSong);
@@ -527,15 +492,12 @@
 
         let statsBox = document.createElement("pre");
         statsBox.id = "stats-box";
-
         gameSpace.appendChild(statsBox);
-
         updateStatsBox();
 
         Object.keys(deckList).forEach((songTitle) => {
           gameSpace.appendChild(createCardElement(songTitle));
         });
-
         deckIsGenerated = true;
       });
 
@@ -574,6 +536,26 @@
           }
         }
 
+        updateStatsBox();
+      }
+
+      function handlePreviousSong() {
+        if (!correct && playedSongsOrder.length > 0 && Object.keys(deckList).includes(playedSongsOrder[0])) {
+          console.log("rerolling card");
+          let toReroll = document.getElementById(playedSongsOrder[0]);
+          if (!addNextCard(toReroll)) {
+            toReroll.removeEventListener("click", handleSongChoice);
+            toReroll.innerHTML = "";
+            toReroll.style.borderColor = "white";
+            cardsLeft--;
+          }
+          let timeForCard = Math.round(performance.now() - songStart); 
+          deckList[playedSongsOrder[0]]["status"] = "rerolled";
+          deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
+          stats["timetaken"] += timeForCard;
+          stats["lastCard"] = timeForCard;
+          stats["rerolls"] += 1;
+        }
         updateStatsBox();
       }
 
