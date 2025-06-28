@@ -544,7 +544,7 @@
                 you made ${errors} errors\n
                 you received ${rerolls} rerolls`);
           }
-        } else {
+        } else if (!correct) {
           let songDict = deckList[chosenTitle];
           if (!("mistakes" in songDict)) {
             songDict["mistakes"] = 1;
