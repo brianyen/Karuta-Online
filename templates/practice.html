@@ -19,7 +19,7 @@
         color: white;
       }
       #game-space {
-        border: 2px solid black;
+        border: 1px solid black;
         position: relative;
         width: 100%;
         height: auto;
@@ -307,7 +307,7 @@
         document.getElementById("countdown").innerText = "0";
       }
 
-      function playNextSong() {
+      async function playNextSong() {
         if (!loadedPlaylist || loadedPlaylist.length === 0) {
           alert("No playlist loaded.");
           return;
@@ -318,8 +318,8 @@
           return;
         }
 
-        handlePreviousSong();
-
+        await handlePreviousSong();
+        
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
 
         songStart = performance.now();
@@ -396,7 +396,7 @@
         document.getElementById("pauseSong").innerHTML = "Play Current Song";
       });
 
-      document.getElementById("playRandom").addEventListener("click", function () {
+      document.getElementById("playRandom").addEventListener("click", async function () {
         cancelAutoplayTimer();
         if (!loadedPlaylist || loadedPlaylist.length === 0) {
           alert("No playlist loaded.");
@@ -412,8 +412,8 @@
           return;
         }
 
-        handlePreviousSong();
-
+        await handlePreviousSong();
+        
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
         console.log("random song: " + randomSong);
 
@@ -497,6 +497,7 @@
       document.getElementById("generateDeck").addEventListener("click", function () {
         playedSongsOrder = [];
         localStorage.removeItem("playedSongs");
+        document.getElementById("card-stats").innerHTML = "";
         updateSongListUI();
         updatePlayedSongsUI();
 
@@ -551,6 +552,12 @@
       });
 
       function handleSongChoice(event) {
+        if (correct) {
+          console.log("correct! nothing should happen");
+          return;
+        } else {
+          console.log("not correct yet! go on");
+        }
         if (playedSongsOrder.length < 1) {
           return;
         }
@@ -581,7 +588,7 @@
         } else if (!correct) {
           let songDict = deckList[chosenTitle];
           stats["errors"] += 1;
-          if (addNextCard()) {
+          if (addNextCard().then((res) => res)) {
             cardsLeft++;
           }
         }
@@ -593,21 +600,24 @@
         if (!correct && playedSongsOrder.length > 0 && Object.keys(deckList).includes(playedSongsOrder[0])) {
           console.log("rerolling card");
           let toReroll = document.getElementById(playedSongsOrder[0]);
-          if (!addNextCard(toReroll)) {
-            toReroll.removeEventListener("click", handleSongChoice);
-            toReroll.innerHTML = "";
-            toReroll.style.borderColor = "white";
-            cardsLeft--;
-          }
-          let timeForCard = Math.round(performance.now() - songStart); 
-          deckList[playedSongsOrder[0]]["status"] = "rerolled";
-          deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
-          stats["timetaken"] += timeForCard;
-          stats["lastCard"] = timeForCard;
-          stats["rerolls"] += 1;
-          updateCardStatsUI();
+          return addNextCard(toReroll).then((res) => {
+            if (!res) {
+              toReroll.removeEventListener("click", handleSongChoice);
+              toReroll.innerHTML = "";
+              toReroll.style.borderColor = "white";
+              cardsLeft--;
+            }
+            let timeForCard = Math.round(performance.now() - songStart); 
+            deckList[playedSongsOrder[0]]["status"] = "rerolled";
+            deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
+            stats["timetaken"] += timeForCard;
+            stats["lastCard"] = timeForCard;
+            stats["rerolls"] += 1;
+            updateCardStatsUI();
+            updateStatsBox();
+            return true;
+          });
         }
-        updateStatsBox();
       }
 
       function addNextCard(toReplace = null) {
@@ -615,19 +625,38 @@
           return !playedSongsOrder.includes(song) && !Object.keys(deckList).includes(song);
         });
 
-        if (remainingCards.length === 0) {
-          return false;
-        }
+        return new Promise((resolve) => {
+          
+          if (remainingCards.length === 0) {
+            resolve(false);
+          }
 
-        nextCardTitle = remainingCards[Math.floor(Math.random() * remainingCards.length)];
+          nextCardTitle = remainingCards[Math.floor(Math.random() * remainingCards.length)];
 
-        if (toReplace === null) {
-          document.getElementById("game-space").appendChild(createCardElement(nextCardTitle));
-        } else {
-          document.getElementById("game-space").replaceChild(createCardElement(nextCardTitle), toReplace);
-        }
-
-        return true;
+          if (toReplace === null) {
+            document.getElementById("game-space").appendChild(createCardElement(nextCardTitle));
+            resolve(true);
+          } else {
+            toReplace.style.borderColor = "red";
+            toReplace.style.borderWidth = "thick";
+            document.getElementById("playRandom").disabled = true;
+            correct = true;
+            console.log(correct);
+            setTimeout(() => {
+              document.getElementById("game-space").replaceChild(createCardElement(nextCardTitle), toReplace);
+              let next = document.getElementById(nextCardTitle);
+              next.style.borderColor = "red";
+              next.style.borderWidth = "thick";
+              setTimeout(() => {
+                next.style.borderColor = "gray"; 
+                next.style.borderWidth = "inherit";
+                document.getElementById("playRandom").disabled = false;
+                correct = false;
+                resolve(true);
+              }, 1000);
+            }, 1000);
+          }
+        });
       }
 
       function createCardElement(songTitle) {
