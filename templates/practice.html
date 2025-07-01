@@ -59,6 +59,12 @@
       li.played {
         background-color: gray;
       }
+      li.correct {
+        background-color: #8cb88c
+      }
+      li.rerolled {
+        background-color: #d57a64
+      }
       li:hover {
         background-color: #f0f0f0;
       }
@@ -134,9 +140,7 @@
     
     <h2>Individual Card Stats</h2>
     <button id="toggleStatsVisibility">Hide Card Stats</button>
-    <div id="card-stats">
-      testing 123
-    </div>
+    <div id="card-stats"></div>
 
     <script>
       let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
@@ -243,6 +247,34 @@
           };
           playedList.appendChild(li);
         });
+      }
+
+      function updateCardStatsUI() {
+        let cardStats = document.getElementById("card-stats");
+        cardStats.innerHTML = "";
+        if (deckList.length === 0) {
+          return;
+        }
+
+        const playedCards = Object.keys(deckList).filter((songTitle) => {
+          return "timeTaken" in deckList[songTitle];
+        });
+        playedCards.sort((s1, s2) => {
+          if (deckList[s1]["status"] === "rerolled" && deckList[s2]["status"] === "correct") {
+            return 1;
+          } else if (deckList[s1]["status"] === "correct" && deckList[s2]["status"] === "rerolled") {
+            return -1;
+          } else {
+            return deckList[s1]["timeTaken"] - deckList[s2]["timeTaken"];
+          }
+        });
+
+        playedCards.forEach((songTitle) => {
+          let li = document.createElement("li");
+          li.textContent = `${deckList[songTitle]["timeTaken"] / 1000}: ${getDisplayName(songTitle)}`;
+          li.classList.add(deckList[songTitle]["status"]);
+          cardStats.appendChild(li);
+        })
       }
 
       function startAutoplayTimer() {
@@ -538,6 +570,7 @@
           stats["correct"] += 1;
           stats["timetaken"] += timeForCard;
           stats["lastCard"] = timeForCard;
+          updateCardStatsUI();
 
           if (cardsLeft == 0) {
             alert(`debug: now this is epical, time is ${stats["timetaken"] / 1000}\n
@@ -572,6 +605,7 @@
           stats["timetaken"] += timeForCard;
           stats["lastCard"] = timeForCard;
           stats["rerolls"] += 1;
+          updateCardStatsUI();
         }
         updateStatsBox();
       }
