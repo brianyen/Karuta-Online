@@ -68,6 +68,16 @@
       li:hover {
         background-color: #f0f0f0;
       }
+      .customInput {
+        float: right;
+      }
+      #customInput {
+        width: 80%;
+        height: 400px;
+        display: none;
+        z-index: 1000;
+        resize: none;
+      }
       .card {
         width: 90px;
         height: 200px;
@@ -101,6 +111,8 @@
     <select id="playlistSelect"></select>
     <button id="loadPlaylist">Load Playlist</button>
     <button id="generateDeck">Generate/Reset Deck</button>
+    <button class="customInput" id="toggleCustom">Show Custom Input Visibility</button><br>
+    <textarea class="customInput" id="customInput"></textarea>
     <hr></hr>
     <button id="pauseSong">Pause/Resume Current Song</button>
     <button id="playRandom">Play Random Song</button>
@@ -445,6 +457,10 @@
         toggleDivVisibility(event, "card-stats", "Card");
       });
 
+      document.getElementById("toggleCustom").addEventListener("click", function(event) {
+        toggleDivVisibility(event, "customInput", "Custom Input");
+      })
+
       function toggleDivVisibility(event, toToggle, toggleText) {
         let toggleEl = document.getElementById(toToggle);
         if (toggleEl.style.display === "none") {
@@ -490,6 +506,13 @@
             updateSongListUI();
             updatePlayedSongsUI();
             alert("Playlist loaded with " + loadedPlaylist.length + " songs.");
+
+            let customInputEl = document.getElementById("customInput");
+            if (customInputEl.value === "") {
+              let inputObject = Object.values(loadedPlaylist).map(v => [v, v])
+              console.log(inputObject)
+              customInputEl.value = JSON.stringify(Object.fromEntries(inputObject), null, 2);
+            }
           })
           .catch((error) => console.error("Error:", error));
       });
@@ -521,6 +544,8 @@
           "timetaken": 0,
           "lastCard": 0
         }
+
+        // read custominput, check if keys match up, create map to song names for cards
 
         deckList = {}
         cardsLeft = deckLength;
