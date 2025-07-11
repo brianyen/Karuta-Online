@@ -155,6 +155,17 @@
     <div id="card-stats"></div>
 
     <script>
+      let cardstatsEl = document.getElementById("card-stats");
+      let autoplaySliderEl = document.getElementById("autoplaySlider");
+      let countdownEl = document.getElementById("countdown");
+      let audioPlayerEl = document.getElementById("audioPlayer");
+      let sliderValueEl = document.getElementById("sliderValue");
+      let pauseSongEl = document.getElementById("pauseSong");
+      let playRandomEl = document.getElementById("playRandom");
+      let playlistSelectEl = document.getElementById("playlistSelect");
+      let customInputEl = document.getElementById("customInput");
+      let gameSpaceEl = document.getElementById("game-space");
+
       let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
       let autoplayTimer = null;
       let countdownInterval = null;
@@ -210,9 +221,10 @@
         fetch("/progress")
           .then((response) => response.json())
           .then((data) => {
+            let progressEl = document.getElementById("progress-bar");
             let percentage = data.total > 0 ? (data.done / data.total) * 100 : 0;
-            document.getElementById("progress-bar").style.width = percentage + "%";
-            document.getElementById("progress-bar").innerText = Math.round(percentage) + "%";
+            progressEl.style.width = percentage + "%";
+            progressEl.innerText = Math.round(percentage) + "%";
             if (data.done === data.total && data.total > 0) {
               updateSongListUI();
               updatePlayedSongsUI();
@@ -262,8 +274,7 @@
       }
 
       function updateCardStatsUI() {
-        let cardStats = document.getElementById("card-stats");
-        cardStats.innerHTML = "";
+        cardstatsEl.innerHTML = "";
         if (deckList.length === 0) {
           return;
         }
@@ -285,21 +296,21 @@
           let li = document.createElement("li");
           li.textContent = `${deckList[songTitle]["timeTaken"] / 1000}: ${getDisplayName(songTitle)}`;
           li.classList.add(deckList[songTitle]["status"]);
-          cardStats.appendChild(li);
+          cardstatsEl.appendChild(li);
         })
       }
 
       function startAutoplayTimer() {
-        let duration = parseInt(document.getElementById("autoplaySlider").value, 10);
+        let duration = parseInt(autoplaySliderEl.value, 10);
         let secondsLeft = duration;
-        document.getElementById("countdown").innerText = secondsLeft;
+        countdownEl.innerText = secondsLeft;
         countdownInterval = setInterval(() => {
           secondsLeft--;
           if (secondsLeft <= 0) {
             clearInterval(countdownInterval);
             countdownInterval = null;
           }
-          document.getElementById("countdown").innerText = secondsLeft;
+          countdownEl.innerText = secondsLeft;
         }, 1000);
         autoplayTimer = setTimeout(() => {
           cancelAutoplayTimer();
@@ -316,7 +327,7 @@
           clearInterval(countdownInterval);
           countdownInterval = null;
         }
-        document.getElementById("countdown").innerText = "0";
+        countdownEl.innerText = "0";
       }
 
       async function playNextSong() {
@@ -343,34 +354,32 @@
 
       function playSong(song) {
         cancelAutoplayTimer();
-        let audioPlayer = document.getElementById("audioPlayer");
         let audioSource = "songs/" + encodeURIComponent(song);
-        audioPlayer.src = audioSource;
-        audioPlayer.load();
+        audioPlayerEl.src = audioSource;
+        audioPlayerEl.load();
 
         function attemptPlayback() {
-          audioPlayer.play().catch((error) => {
+          audioPlayerEl.play().catch((error) => {
             console.warn("Playback failed (promise rejection), retrying...", error);
             setTimeout(attemptPlayback, 500);
           });
         }
 
         function onCanPlayThrough() {
-          audioPlayer.removeEventListener("canplaythrough", onCanPlayThrough);
-          const autoplaySlider = document.getElementById("autoplaySlider");
+          audioPlayerEl.removeEventListener("canplaythrough", onCanPlayThrough);
           autoplaySlider.min = 0;
-          autoplaySlider.max = Math.floor(audioPlayer.duration);
-          if (parseInt(autoplaySlider.value, 10) > audioPlayer.duration) {
-            autoplaySlider.value = Math.floor(audioPlayer.duration / 2);
+          autoplaySlider.max = Math.floor(audioPlayerEl.duration);
+          if (parseInt(autoplaySlider.value, 10) > audioPlayerEl.duration) {
+            autoplaySlider.value = Math.floor(audioPlayerEl.duration / 2);
           }
-          document.getElementById("sliderValue").innerText = autoplaySlider.value;
-          let halfDuration = audioPlayer.duration / 2;
+          sliderValueEl.innerText = autoplaySliderEl.value;
+          let halfDuration = audioPlayerEl.duration / 2;
           let randomStart = Math.random() * halfDuration;
-          audioPlayer.currentTime = randomStart;
+          audioPlayerEl.currentTime = randomStart;
 
           attemptPlayback();
           
-          audioPlayer.onerror = function () {
+          audioPlayerEl.onerror = function () {
             console.warn("Audio error event fired, retrying playback...");
             setTimeout(attemptPlayback, 500);
           };
@@ -378,7 +387,7 @@
             startAutoplayTimer();
           }
         }
-        audioPlayer.addEventListener("canplaythrough", onCanPlayThrough);
+        audioPlayerEl.addEventListener("canplaythrough", onCanPlayThrough);
 
         document.getElementById("currentSong").innerText = getDisplayName(song);
         const index = playedSongsOrder.indexOf(song);
@@ -391,24 +400,23 @@
         updatePlayedSongsUI();
       }
 
-      document.getElementById("pauseSong").addEventListener("click", function() {
-        let audioEl = document.getElementById("audioPlayer");
-        if (audioEl.paused) {
-          audioEl.play();
+      pauseSongEl.addEventListener("click", function() {
+        if (audioPlayerEl.paused) {
+          audioPlayerEl.play();
         } else {
-          audioEl.pause();
+          audioPlayerEl.pause();
         }
       });
 
-      document.getElementById("audioPlayer").addEventListener("play", function() {
-        document.getElementById("pauseSong").innerHTML = "Pause Current Song";
+      audioPlayerEl.addEventListener("play", function() {
+        pauseSongEl.innerHTML = "Pause Current Song";
       });
 
-      document.getElementById("audioPlayer").addEventListener("pause", function() {
-        document.getElementById("pauseSong").innerHTML = "Play Current Song";
+      audioPlayerEl.addEventListener("pause", function() {
+        pauseSongEl.innerHTML = "Play Current Song";
       });
 
-      document.getElementById("playRandom").addEventListener("click", async function () {
+      playRandomEl.addEventListener("click", async function () {
         cancelAutoplayTimer();
         if (!loadedPlaylist || loadedPlaylist.length === 0) {
           alert("No playlist loaded.");
@@ -441,8 +449,8 @@
         playNextSong();
       });
 
-      document.getElementById("autoplaySlider").addEventListener("input", function () {
-        document.getElementById("sliderValue").innerText = this.value;
+      autoplaySliderEl.addEventListener("input", function () {
+        sliderValueEl.innerText = this.value;
       });
 
       document.getElementById("toggleAudioPlayer").addEventListener("click", function (event) {
@@ -478,21 +486,19 @@
         fetch("/get-playlists")
           .then((response) => response.json())
           .then((data) => {
-            let select = document.getElementById("playlistSelect");
-            select.innerHTML = "";
+            playlistSelectEl.innerHTML = "";
             data.playlists.forEach((filename) => {
               let option = document.createElement("option");
               option.value = filename;
               option.textContent = filename;
-              select.appendChild(option);
+              playlistSelectEl.appendChild(option);
             });
           })
           .catch((error) => console.error("Error:", error));
       }
 
       document.getElementById("loadPlaylist").addEventListener("click", function () {
-        let select = document.getElementById("playlistSelect");
-        let filename = select.value;
+        let filename = playlistSelectEl.value;
         if (!filename) {
           alert("No playlist selected.");
           return;
@@ -507,7 +513,6 @@
             updatePlayedSongsUI();
             alert("Playlist loaded with " + loadedPlaylist.length + " songs.");
 
-            let customInputEl = document.getElementById("customInput");
             if (customInputEl.value === "") {
               let inputObject = Object.values(loadedPlaylist).map(v => [v, v])
               console.log(inputObject)
@@ -520,7 +525,7 @@
       document.getElementById("generateDeck").addEventListener("click", function () {
         playedSongsOrder = [];
         localStorage.removeItem("playedSongs");
-        document.getElementById("card-stats").innerHTML = "";
+        cardstatsEl.innerHTML = "";
         updateSongListUI();
         updatePlayedSongsUI();
 
@@ -545,6 +550,7 @@
           "lastCard": 0
         }
 
+        cardMapping = JSON.parse(customInputEl.value)
         // read custominput, check if keys match up, create map to song names for cards
 
         deckList = {}
@@ -562,26 +568,22 @@
           deckList[songsCopy[i]] = {};
         }
 
-        let gameSpace = document.getElementById("game-space"); 
-        gameSpace.innerHTML = "";
+        gameSpaceEl.innerHTML = "";
 
         let statsBox = document.createElement("pre");
         statsBox.id = "stats-box";
-        gameSpace.appendChild(statsBox);
+        gameSpaceEl.appendChild(statsBox);
         updateStatsBox();
 
         Object.keys(deckList).forEach((songTitle) => {
-          gameSpace.appendChild(createCardElement(songTitle));
+          gameSpaceEl.appendChild(createCardElement(songTitle));
         });
         deckIsGenerated = true;
       });
 
       function handleSongChoice(event) {
         if (correct) {
-          console.log("correct! nothing should happen");
           return;
-        } else {
-          console.log("not correct yet! go on");
         }
         if (playedSongsOrder.length < 1) {
           return;
@@ -659,23 +661,23 @@
           nextCardTitle = remainingCards[Math.floor(Math.random() * remainingCards.length)];
 
           if (toReplace === null) {
-            document.getElementById("game-space").appendChild(createCardElement(nextCardTitle));
+            gameSpaceEl.appendChild(createCardElement(nextCardTitle));
             resolve(true);
           } else {
             toReplace.style.borderColor = "red";
             toReplace.style.borderWidth = "thick";
-            document.getElementById("playRandom").disabled = true;
+            playRandomEl.disabled = true;
             correct = true;
             console.log(correct);
             setTimeout(() => {
-              document.getElementById("game-space").replaceChild(createCardElement(nextCardTitle), toReplace);
+              gameSpaceEl.replaceChild(createCardElement(nextCardTitle), toReplace);
               let next = document.getElementById(nextCardTitle);
               next.style.borderColor = "red";
               next.style.borderWidth = "thick";
               setTimeout(() => {
                 next.style.borderColor = "gray"; 
                 next.style.borderWidth = "inherit";
-                document.getElementById("playRandom").disabled = false;
+                playRandomEl.disabled = false;
                 correct = false;
                 resolve(true);
               }, 1000);
