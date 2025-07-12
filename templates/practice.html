@@ -111,6 +111,7 @@
     <select id="playlistSelect"></select>
     <button id="loadPlaylist">Load Playlist</button>
     <button id="generateDeck">Generate/Reset Deck</button>
+    <button class="customInput" onclick="alertInstructions()">Custom Input Instructions</button>
     <button class="customInput" id="toggleCustom">Show Custom Input Visibility</button><br>
     <textarea class="customInput" id="customInput"></textarea>
     <hr></hr>
@@ -349,7 +350,6 @@
         songStart = performance.now();
         correct = false;
 
-        console.log(cardsLeft)
         playSong(randomSong);
       }
 
@@ -440,8 +440,7 @@
 
         songStart = performance.now();
         correct = false;
-
-        console.log(cardsLeft)
+        
         playSong(randomSong);
       });
 
@@ -515,9 +514,11 @@
             alert("Playlist loaded with " + loadedPlaylist.length + " songs.");
 
             if (customInputEl.value === "") {
-              let inputObject = Object.values(loadedPlaylist).map(v => [v, v])
-              console.log(inputObject)
-              customInputEl.value = JSON.stringify(Object.fromEntries(inputObject), null, 2);
+              let customOut = "";
+              loadedPlaylist.forEach((v) => {
+                customOut += `${v}\t${v}\n`
+              })
+              customInputEl.value = customOut;
               cardNameMapping = {};
             }
           })
@@ -552,7 +553,9 @@
           "lastCard": 0
         }
 
-        if (customInputEl.value != "") {
+        cardNameMapping = parseCustomInput(customInputEl.value);
+
+        /*if (customInputEl.value != "") {
           try {
             cardNameMapping = JSON.parse(customInputEl.value);
           } catch (error) {
@@ -561,8 +564,7 @@
           }
         } else {
           cardNameMapping = {};
-        }
-        // read custominput, check if keys match up, create map to song names for cards
+        }*/
 
         deckList = {}
         cardsLeft = deckLength;
@@ -658,6 +660,23 @@
         }
       }
 
+      function parseCustomInput(input) {
+        let out = {}
+        try {
+          out = JSON.parse(input);
+        } catch (error) {
+          console.log("custom input is not json, attempting sheet parse")
+        }
+        let lines = input.split(/\r?\n/);
+        lines.forEach((line) => {
+          let parts = line.split(/\t/);
+          if (parts.length === 2) {
+            out[parts[0]] = parts[1]
+          }
+        })
+        return out;
+      }
+
       function addNextCard(toReplace = null) {
         let remainingCards = loadedPlaylist.filter((song) => {
           return !playedSongsOrder.includes(song) && !Object.keys(deckList).includes(song);
@@ -707,7 +726,7 @@
 
         songCard.addEventListener("click", handleSongChoice);
 
-        if (songTitle.slice(-4) != ".mp3") {
+        if (cardTitle.slice(-4) != ".mp3") {
           songCard.innerHTML = cardTitle;
         } else {
           songCard.innerHTML = cardTitle.slice(0, -4);
@@ -720,6 +739,14 @@
 
       function updateStatsBox() {
         document.getElementById("stats-box").innerHTML = JSON.stringify(stats, null, 2).replace(/[{}"]/g, "");
+      }
+
+      function alertInstructions() {
+        alert('Accepted Formats:\n' +
+          '1. JSON format with {"Original Song.mp3": "New Title", ...}\n' + 
+          '2. Leave the text box empty, and click Load Playlist. Copy the text into a spreadsheet, which should paste two columns. ' +
+          'Change the second column to your custom titles. When done, highlight and copy the two columns from the spreadsheet back into the box.'
+        )
       }
 
       loadPlaylistsList();
