@@ -111,7 +111,8 @@
     <select id="playlistSelect"></select>
     <button id="loadPlaylist">Load Playlist</button>
     <button id="generateDeck">Generate/Reset Deck</button>
-    <button class="customInput" onclick="alertInstructions()">Custom Input Instructions</button>
+    <button class="customInput" id="saveCustom" onclick="saveCustom()">Save Mapping</button>
+    <button class="customInput" id="loadCustom" onclick="loadCustom()">Load Mapping</button>
     <button class="customInput" id="toggleCustom">Show Custom Input Visibility</button><br>
     <textarea class="customInput" id="customInput"></textarea>
     <hr></hr>
@@ -555,17 +556,6 @@
 
         cardNameMapping = parseCustomInput(customInputEl.value);
 
-        /*if (customInputEl.value != "") {
-          try {
-            cardNameMapping = JSON.parse(customInputEl.value);
-          } catch (error) {
-            alert('Please provide a valid format {"original title.mp3)": "custom title", etc.} or leave custom input field empty');
-            return;
-          }
-        } else {
-          cardNameMapping = {};
-        }*/
-
         deckList = {}
         cardsLeft = deckLength;
 
@@ -741,12 +731,46 @@
         document.getElementById("stats-box").innerHTML = JSON.stringify(stats, null, 2).replace(/[{}"]/g, "");
       }
 
-      function alertInstructions() {
-        alert('Accepted Formats:\n' +
-          '1. JSON format with {"Original Song.mp3": "New Title", ...}\n' + 
-          '2. Leave the text box empty, and click Load Playlist. Copy the text into a spreadsheet, which should paste two columns. ' +
-          'Change the second column to your custom titles. When done, highlight and copy the two columns from the spreadsheet back into the box.'
-        )
+      function saveCustom() {
+        if (!confirm(`Are you sure you want to overwrite any previous mapping for ${playlistSelectEl.value}?`)) {
+          return;
+        }
+
+        jsonData = {
+          "mapping": parseCustomInput(customInputEl.value),
+          "filename": playlistSelectEl.value
+        }
+        noMapping = Object.entries(jsonData.mapping).every(([key, value]) => key === value);
+        if (noMapping) {
+          alert("No mapping detected, nothing will be written")
+          return;
+        }
+
+        fetch("/write-mapping", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(jsonData)
+        })
+        .then((response) => response.json())
+        .then(data => {
+          alert(data.message || data.error);
+        });
+      }
+
+      function loadCustom() {
+        fetch("/get-mapping?filename=" + playlistSelectEl.value)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            alert(data.error);
+          } else {
+            customString = "";
+            Object.keys(data).forEach((k) => {
+              customString += `${k}\t${data[k]}\n`;
+            });
+            customInputEl.value = customString;
+          }
+        });
       }
 
       loadPlaylistsList();

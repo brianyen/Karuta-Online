@@ -8,6 +8,7 @@ app = Flask(__name__)
 
 SONGS_FOLDER = "songs"
 PROGRESS_FILE = "progress.json"
+MAPPING_FOLDER = "custom"
 
 @app.route('/')
 def home():
@@ -84,6 +85,35 @@ def load_playlist():
   with open(filepath, "r") as f:
     songs = json.load(f)
   return jsonify({"songs": songs})
+
+@app.route('/write-mapping', methods=['POST'])
+def write_custom_mapping():
+  try:
+    data = request.json
+    filename = data.get("filename")
+    mapping = data.get("mapping")
+
+    print("filename", filename)
+    print("mapping", mapping)
+
+    if not os.path.isdir(MAPPING_FOLDER):
+      os.mkdir(MAPPING_FOLDER)
+    with open(os.path.join(MAPPING_FOLDER, filename), "w") as f:
+      f.write(json.dumps(mapping, indent=4))
+    return jsonify({"message": "Mapping saved successfully!"})
+  except Exception as e:
+    print("Error saving mapping", e)
+    return jsonify({"error": str(e)}), 500
+   
+@app.route('/get-mapping', methods=['GET'])
+def get_custom_mapping():
+  filename = request.args.get("filename")
+  path = os.path.join(MAPPING_FOLDER, filename)
+  
+  if os.path.exists(path):
+    with open(path, "r") as f:
+      return json.load(f)
+  return jsonify({"error": "Custom mapping not found"})
 
 if __name__ == '__main__':
   app.run(debug=True)
