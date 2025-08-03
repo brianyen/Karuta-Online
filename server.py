@@ -18,6 +18,10 @@ def home():
 def practice():
   return render_template("practice.html")
 
+@app.route('/edit-deck')
+def edit_deck():
+  return render_template("edit.html")
+
 @app.route('/run-script', methods=['POST'])
 def run_script():
   try:
@@ -117,3 +121,4 @@ def get_custom_mapping():
 
 if __name__ == '__main__':
   app.run(debug=True)
+

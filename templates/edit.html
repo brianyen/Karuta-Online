@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Edit Deck</title>
+    </head>
+    <body>
+        <h1>Edit Deck</h1>
+        <a href="/"><div id="go-home" class="navigation">Home</div></a>
+        <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
+        <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
+        <select id="playlistSelect"></select>
+        <div id="table">
+
+        </div>
+        <script>
+            let playlistSelectEl = document.getElementById("playlistSelect");
+            let params = new URLSearchParams(document.location.search);
+
+            fetch("/get-playlists")
+            .then((response) => response.json())
+            .then((data) => {
+                playlistSelectEl.innerHTML = "";
+                data.playlists.forEach((filename) => {
+                    let option = document.createElement("option");
+                    option.value = filename;
+                    option.textContent = filename;
+                    playlistSelectEl.appendChild(option);
+                });
+
+                playlistSelectEl.addEventListener("change", loadTable);
+            });
+
+            function loadTable() {
+                let deckName = playlistSelectEl.value;
+
+                /*
+
+                1. get current images
+                2. get custom mapping if available
+                3. create a table with columns file name, custom name, image
+                4. implement way for user to upload image into each "image" cell (ideally by copy paste)
+                5. button that allows mappings to be uploaded to some folder
+
+                also i should make a separat css file lol
+                */
+            }
+        </script>
+    </body>
+</html>
+<style>
+#go-home {
+    position: absolute;
+    right: 100px;
+    top: 30px;
+    padding: 5px;
+}
+#go-practice {
+    position: absolute;
+    right: 30px;
+    top: 30px;
+    padding: 5px;
+}
+#go-edit {
+    position: absolute;
+    right: 170px;
+    top: 30px;
+    padding: 5px;
+}
+.navigation:hover {
+    background-color: lightblue;
+    cursor: default;
+    color: black;
+    text-decoration: none;
+    }
+</style>
