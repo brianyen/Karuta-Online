@@ -9,6 +9,7 @@ app = Flask(__name__)
 SONGS_FOLDER = "songs"
 PROGRESS_FILE = "progress.json"
 MAPPING_FOLDER = "custom"
+IMAGE_FOLDER = "images"
 
 @app.route('/')
 def home():
@@ -114,6 +115,18 @@ def get_custom_mapping():
   filename = request.args.get("filename")
   path = os.path.join(MAPPING_FOLDER, filename)
   
+  if os.path.exists(path):
+    with open(path, "r") as f:
+      return json.load(f)
+  return jsonify({"error": "Custom mapping not found"})
+
+@app.route('/get-images', methods=['GET'])
+def get_custom_images():
+  filename = request.args.get("filename")
+  path = os.path.join(IMAGE_FOLDER, filename)
+
+  if not os.path.isdir(IMAGE_FOLDER):
+    os.mkdir(IMAGE_FOLDER)
   if os.path.exists(path):
     with open(path, "r") as f:
       return json.load(f)
