@@ -3,6 +3,7 @@ import subprocess
 import os
 import json
 import random
+import base64
 
 app = Flask(__name__)
 
@@ -120,17 +121,45 @@ def get_custom_mapping():
       return json.load(f)
   return jsonify({"error": "Custom mapping not found"})
 
+@app.route('/write-images', methods=['POST'])
+def write_custom_images():
+  try:
+    data = request.json
+    filename = data.get("filename")
+    image_list = data.get("imageList")
+    path = os.path.join(IMAGE_FOLDER, filename)
+
+    if not os.path.isdir(path):
+      os.mkdir(path)
+    for file in os.listdir(path):
+      filepath = os.path.join(path, file)
+      if os.path.isfile(filepath):
+        os.remove(filepath)
+    for obj in image_list:
+      if obj["image"]:
+        header, encoded = obj["image"].split(',', 1)
+        file_ext = header.split('/')[1].split(';')[0]
+        file_name = f"{obj["id"]}.{file_ext}"
+        file_path = os.path.join(path, file_name)
+        img_bytes = base64.b64decode(encoded)
+        with open(file_path, "wb") as f:
+          f.write(img_bytes)
+    
+    return jsonify({"message": "Images saved successfully"})
+  except Exception as e:
+    return jsonify({"error", str(e)}), 500
+
 @app.route('/get-images', methods=['GET'])
 def get_custom_images():
   filename = request.args.get("filename")
   path = os.path.join(IMAGE_FOLDER, filename)
 
-  if not os.path.isdir(IMAGE_FOLDER):
-    os.mkdir(IMAGE_FOLDER)
-  if os.path.exists(path):
-    with open(path, "r") as f:
-      return json.load(f)
-  return jsonify({"error": "Custom mapping not found"})
+  if not os.path.isdir(path):
+    os.mkdir(path)
+  #if os.path.exists(path):
+  #  with open(path, "r") as f:
+  #    return json.load(f)
+  return jsonify({"error": "Custom images not found"})
 
 if __name__ == '__main__':
   app.run(debug=True)

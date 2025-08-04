@@ -11,6 +11,7 @@
         <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
         <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
         <select id="playlistSelect"></select>
+        <button id="save" onclick="saveInfo()">Save</button>
         <table id="tableContainer"></table>
         <script>
             let playlistSelectEl = document.getElementById("playlistSelect");
@@ -112,7 +113,7 @@
                         console.log("no images found for " + deck);
                     } else {
                         Object.keys(data).forEach((k) => {
-                            
+                            // figure this out lol
                         });
                     }
                 })
@@ -146,6 +147,55 @@
                         reader.readAsDataURL(imgFile);
                     }
                 }
+            }
+
+            function saveInfo() {
+                if (!confirm("Are you sure you want to save (and potentially overwrite) current data?")) {
+                    return;
+                }
+                let rows = document.querySelectorAll("tr");
+                let mappingData = {
+                    "filename": playlistSelectEl.value,
+                    "mapping": {}
+                };
+                let imageRequest = {};
+                imageRequest["filename"] = playlistSelectEl.value;
+                imageRequest["imageList"] = [];
+
+                rows.forEach(row => {
+                    let songId = row.id;
+                    let songTitle = row.getElementsByClassName("titleCell")[0].getElementsByTagName("input")[0].value;
+                    let songImage = row.getElementsByClassName("imageCell")[0].dataset.imageData || null;
+
+                    mappingData.mapping[songId] = songTitle;
+                    imageRequest.imageList.push({
+                        "id": songId,
+                        "image": songImage
+                    });
+                });
+                
+                fetch("/write-mapping", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(mappingData)
+                })
+                .then((response) => response.json())
+                .then(data => {
+                    console.log(data.message || data.error);
+                });
+
+                fetch("/write-images", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(imageRequest)
+                })
+                .then((response) => response.json())
+                .then(data => {
+                    console.log(data.message || data.error);
+                })
+                
+
+                console.log(mappingData);
             }
         </script>
     </body>
