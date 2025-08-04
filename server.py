@@ -132,9 +132,9 @@ def write_custom_images():
     if not os.path.isdir(path):
       os.mkdir(path)
     for file in os.listdir(path):
-      filepath = os.path.join(path, file)
-      if os.path.isfile(filepath):
-        os.remove(filepath)
+      file_path = os.path.join(path, file)
+      if os.path.isfile(file_path):
+        os.remove(file_path)
     for obj in image_list:
       if obj["image"]:
         header, encoded = obj["image"].split(',', 1)
@@ -153,13 +153,20 @@ def write_custom_images():
 def get_custom_images():
   filename = request.args.get("filename")
   path = os.path.join(IMAGE_FOLDER, filename)
+  out = {}
 
   if not os.path.isdir(path):
     os.mkdir(path)
-  #if os.path.exists(path):
-  #  with open(path, "r") as f:
-  #    return json.load(f)
-  return jsonify({"error": "Custom images not found"})
+  for file in os.listdir(path):
+    file_path = os.path.join(path, file)
+    with open(file_path, "rb") as f:
+      encoded = base64.b64encode(f.read()).decode('utf-8')
+      ext = path.split('.')[-1]
+      out[file[:file.rfind('.')]] = f"data:image/{ext};base64,{encoded}"
+  try:
+    return jsonify(out)
+  except Exception as e:
+    return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
   app.run(debug=True)

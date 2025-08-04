@@ -75,17 +75,6 @@
                     })
                     fillTableTitles(deck);
                 });
-
-                /*
-
-                1. get current images
-                2. get custom mapping if available
-                3. create a table with columns file name, custom name, image
-                4. implement way for user to upload image into each "image" cell (ideally by copy paste)
-                5. button that allows mappings to be uploaded to some folder
-
-                also i should make a separat css file lol
-                */
             }
 
             function fillTableTitles(deck) {
@@ -113,7 +102,17 @@
                         console.log("no images found for " + deck);
                     } else {
                         Object.keys(data).forEach((k) => {
-                            // figure this out lol
+                            let row = document.getElementById(k);
+                            let cell = row.getElementsByClassName("imageCell")[0];
+                            cell.innerHTML = "";
+
+                            let imgEl = document.createElement("img");
+                            imgEl.src = data[k];
+                            imgEl.style.maxWidth = "100px";
+                            imgEl.style.maxHeight = "100px";
+
+                            cell.appendChild(imgEl);
+                            cell.dataset.imageData = imgEl.src;
                         });
                     }
                 })
