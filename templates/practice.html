@@ -25,7 +25,7 @@
         height: auto;
         display: grid;
         gap: 3px;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
       }
       #stats-box {
         position: absolute;
@@ -85,14 +85,26 @@
         resize: none;
       }
       .card {
-        width: 90px;
-        height: 200px;
+        width: 110px;
+        height: 220px;
         margin: 5px;
         border: 1px solid gray;
-        text-align: center;
         overflow-wrap: break-word;
         overflow-y: hidden;
         text-align: center;
+        font-size: 14px;
+      }
+      .card-image {
+        height: 67%;
+        top: 1px;
+        max-width: 100%;
+        max-height: 67%;
+        object-fit: contain;
+      }
+      .card-text {
+        height: 33%;
+        bottom: 1px;
+        background-color: white;
       }
       .navigation:hover {
         background-color: lightblue;
@@ -183,6 +195,7 @@
       let deckIsGenerated = false;
       let deckList = {};
       let cardNameMapping = {};
+      let images = {};
       let cardsLeft = 0;
       
       let songStart = 0;
@@ -571,7 +584,6 @@
         while (p1 != 0) {
           let p2 = Math.floor(Math.random() * p1);
           p1--;
-
           [songsCopy[p1], songsCopy[p2]] = [songsCopy[p2], songsCopy[p1]];
         }
         for (i = 0; i < deckLength; i++) {
@@ -715,19 +727,27 @@
 
       function createCardElement(songTitle) {
         let songCard = document.createElement("div");
+
+        let cardImage = document.createElement("img");
+        let cardText = document.createElement("div");
+        songCard.appendChild(cardImage);
+        songCard.appendChild(cardText);
           
         songCard.className = "card";
         songCard.id = songTitle;
+        cardImage.className = "card-image";
+        cardText.className = "card-text";
 
         let cardTitle = (cardNameMapping[songTitle] != undefined) ? cardNameMapping[songTitle] : songTitle;
 
         songCard.addEventListener("click", handleSongChoice);
 
         if (cardTitle.slice(-4) != ".mp3") {
-          songCard.innerHTML = cardTitle;
+          cardText.innerHTML = cardTitle;
         } else {
-          songCard.innerHTML = cardTitle.slice(0, -4);
+          cardText.innerHTML = cardTitle.slice(0, -4);
         }
+        cardImage.src = images[songTitle] || "";
 
         deckList[songTitle] = {}
 
@@ -776,6 +796,18 @@
               customString += `${k}\t${data[k]}\n`;
             });
             customInputEl.value = customString;
+          }
+        });
+
+        fetch("/get-images?filename=" + playlistSelectEl.value)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            alert(data.error);
+          } else {
+            Object.keys(data).forEach((k) => {
+              images[k] = data[k];
+            })
           }
         });
       }
