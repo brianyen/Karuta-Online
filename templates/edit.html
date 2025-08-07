@@ -61,7 +61,7 @@
 
                         let songImageEl = document.createElement("td");
                         songImageEl.className = "imageCell";
-                        songImageEl.addEventListener("paste", songPasteHandler);
+                        songImageEl.addEventListener("click", songSelectHandler);
 
                         rowEl.appendChild(songIdEl);
                         rowEl.appendChild(songTitleEl);
@@ -117,34 +117,89 @@
                     }
                 })
             }
-            
+
             function songPasteHandler(event) {
                 let items = event.clipboardData.items;
-                console.log(event);
+                let targetEl = document.querySelector("TD[selected]");
+
                 for (let item of items) {
                     if (item.type.indexOf("image") !== -1) {
                         let imgFile = item.getAsFile();
-                        let reader = new FileReader();
 
-                        reader.onload = function (e) {
-                            let imgEl = document.createElement("img");
-                            imgEl.src = e.target.result;
-                            imgEl.style.maxWidth = "100px";
-                            imgEl.style.maxHeight = "100px";
+                        if (targetEl) {
+                            let reader = new FileReader();
 
-                            let targetCell = event.target;
-                            console.log(targetCell + " " + targetCell.tagName);
-                            if (targetCell.tagName !== "TD") {
-                                targetCell = targetCell.parentElement;
+                            reader.onload = function (e) {
+                                let imgEl = document.createElement("img");
+                                imgEl.src = e.target.result;
+                                imgEl.style.maxWidth = "100px";
+                                imgEl.style.maxHeight = "100px";
+
+                                if (targetEl.tagName !== "TD") {
+                                    console.log("AAAAAA BAD THING");
+                                }
+
+                                targetEl.innerHTML = "";
+                                targetEl.appendChild(imgEl);
+                                targetEl.dataset.imageData = imgEl.src;
                             }
 
-                            targetCell.innerHTML = "";
-                            targetCell.appendChild(imgEl);
-                            targetCell.dataset.imageData = imgEl.src;
+                            reader.readAsDataURL(imgFile);
                         }
-
-                        reader.readAsDataURL(imgFile);
                     }
+                }
+            }
+            
+            function keyUpHandler(event) {
+                let targetEl = document.querySelector("TD[selected]");
+                switch (event.key) {
+                    case "Escape":
+                        document.querySelectorAll("TD[selected]").forEach(el => {
+                            el.removeAttribute("selected");
+                            el.style.border = "";
+                            el.querySelectorAll("img").forEach(img => {
+                                img.style.border = "";
+                            })
+                        })
+                        break;
+                    case "Backspace":
+                    case "Delete":
+                        let formTags = ['INPUT', 'TEXTAREA', 'SELECT', 'OPTION'];
+                        if (targetEl && !formTags.includes(event.target.tagName) &&
+                                confirm(`Do you want to delete the image of ${targetEl.parentElement.id}`)) {
+                            targetEl.innerHTML = "";
+                        }
+                        break;
+                    default:
+                }
+            }
+
+            function songSelectHandler(event) {
+                let targetEl = event.target;
+                if (targetEl.tagName !== "TD") {
+                    targetEl = targetEl.parentElement;
+                }
+
+                let borderStyle = "2px solid #5599CC"
+                if (targetEl.getAttribute("selected")) {
+                    borderStyle = "";
+                    targetEl.removeAttribute("selected");
+                } else {
+                    targetEl.setAttribute("selected", "true");
+                    document.querySelectorAll("TD[selected]").forEach(el => {
+                        el.style.border = "";
+                        if (el !== targetEl) {
+                            el.removeAttribute("selected");
+                        }
+                        el.querySelectorAll("img").forEach(img => {
+                            img.style.border = "";
+                        })
+                    })
+                }
+                targetEl.style.border = borderStyle;
+                let imgs = targetEl.getElementsByTagName("img");
+                if (imgs.length > 0) {
+                    imgs[0].style.border = borderStyle;
                 }
             }
 
@@ -196,6 +251,9 @@
 
                 console.log(mappingData);
             }
+
+            document.addEventListener("paste", songPasteHandler);
+            document.addEventListener("keyup", keyUpHandler)
         </script>
     </body>
 </html>
