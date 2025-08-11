@@ -611,14 +611,15 @@
         if (playedSongsOrder.length < 1) {
           return;
         }
-        chosenTitle = event.target.id;
+        let target = (event.target.id === "") ? event.target.parentElement : event.target;
+        chosenTitle = target.id;
         currentSong = playedSongsOrder[0];
         
         if (currentSong === chosenTitle) {
           correct = true;
-          event.target.removeEventListener("click", handleSongChoice);
-          event.target.innerHTML = "";
-          event.target.style.borderColor = "white";
+          target.removeEventListener("click", handleSongChoice);
+          target.innerHTML = "";
+          target.style.borderColor = "white";
           cardsLeft--;
 
           let timeForCard = Math.round(performance.now() - songStart); 
