@@ -548,6 +548,9 @@
       });
 
       document.getElementById("generateDeck").addEventListener("click", function () {
+        if (deckIsGenerated && !confirm("Are you sure you want to generate a new deck?")) {
+          return;
+        }
         playedSongsOrder = [];
         localStorage.removeItem("playedSongs");
         cardstatsEl.innerHTML = "";
@@ -557,9 +560,6 @@
         let deckLength = (loadedPlaylist.length > 80) ? 50 : Math.floor(loadedPlaylist.length / 4) * 2;
         if (deckLength == 0) {
           alert("Please load a deck first.");
-          return;
-        }
-        if (deckIsGenerated && !confirm("Are you sure you want to generate a new deck?")) {
           return;
         }
         if (deckLength > loadedPlaylist.length) {
