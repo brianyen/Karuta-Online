@@ -74,6 +74,9 @@
       li:hover {
         background-color: #f0f0f0;
       }
+      .right-align {
+        float: right;
+      }
       .customInput {
         float: right;
       }
@@ -318,7 +321,7 @@
 
         playedCards.forEach((songTitle) => {
           let li = document.createElement("li");
-          li.textContent = `${deckList[songTitle]["timeTaken"] / 1000}: ${getDisplayName(songTitle)}`;
+          li.innerHTML = `${deckList[songTitle]["timeTaken"] / 1000}: ${getDisplayName(songTitle)}<span class="right-align">Remaining Cards After Taken: ${deckList[songTitle]["cardsLeft"]}</span>`;
           li.classList.add(deckList[songTitle]["status"]);
           cardstatsEl.appendChild(li);
         })
@@ -624,6 +627,7 @@
 
           let timeForCard = Math.round(performance.now() - songStart); 
           deckList[chosenTitle]["timeTaken"] = timeForCard;
+          deckList[chosenTitle]["cardsLeft"] = cardsLeft;
           deckList[chosenTitle]["status"] = "correct";
           stats["correct"] += 1;
           stats["timetaken"] += timeForCard;
@@ -661,6 +665,7 @@
             let timeForCard = Math.round(performance.now() - songStart); 
             deckList[playedSongsOrder[0]]["status"] = "rerolled";
             deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
+            deckList[playedSongsOrder[0]]["cardsLeft"] = cardsLeft;
             stats["timetaken"] += timeForCard;
             stats["lastCard"] = timeForCard;
             stats["rerolls"] += 1;
