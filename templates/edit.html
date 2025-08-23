@@ -219,6 +219,9 @@
                 rows.forEach(row => {
                     let songId = row.id;
                     let songTitle = row.getElementsByClassName("titleCell")[0].getElementsByTagName("input")[0].value;
+                    if (songTitle === "") {
+                        songTitle = row.id;
+                    }
                     let songImage = row.getElementsByClassName("imageCell")[0].dataset.imageData || null;
 
                     mappingData.mapping[songId] = songTitle;

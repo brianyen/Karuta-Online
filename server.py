@@ -129,6 +129,8 @@ def write_custom_images():
     image_list = data.get("imageList")
     path = os.path.join(IMAGE_FOLDER, filename)
 
+    if not os.path.isdir(IMAGE_FOLDER):
+      os.mkdir(IMAGE_FOLDER)
     if not os.path.isdir(path):
       os.mkdir(path)
     for file in os.listdir(path):
@@ -155,6 +157,8 @@ def get_custom_images():
   path = os.path.join(IMAGE_FOLDER, filename)
   out = {}
 
+  if not os.path.isdir(IMAGE_FOLDER):
+      os.mkdir(IMAGE_FOLDER)
   if not os.path.isdir(path):
     os.mkdir(path)
   for file in os.listdir(path):
