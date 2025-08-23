@@ -18,6 +18,24 @@
         text-align: center;
         color: white;
       }
+      #go-home {
+        position: absolute;
+        right: 100px;
+        top: 30px;
+        padding: 5px;
+      }
+      #go-practice {
+        position: absolute;
+        right: 30px;
+        top: 30px;
+        padding: 5px;
+      }
+      #go-edit {
+          position: absolute;
+          right: 170px;
+          top: 30px;
+          padding: 5px;
+      }
       ul {
         list-style-type: none;
         padding: 0;
@@ -33,10 +51,19 @@
       li:hover {
         background-color: #f0f0f0;
       }
+      .navigation:hover {
+        background-color: lightblue;
+        cursor: default;
+        color: black;
+        text-decoration: none;
+      }
     </style>
   </head>
   <body>
     <h1>Karuta Player</h1>
+    <a href="/"><div id="go-home" class="navigation">Home</div></a>
+    <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
+    <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
     <input type="text" id="playlistUrl" placeholder="Enter YouTube playlist URL"/>
     <button id="runScript">Download & Convert Playlist</button>
     <button id="clearSongs">Clear Songs Folder</button>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Edit Deck</title>
+    </head>
+    <body>
+        <h1>Edit Deck</h1>
+        <a href="/"><div id="go-home" class="navigation">Home</div></a>
+        <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
+        <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
+        <select id="playlistSelect"></select>
+        <button id="save" onclick="saveInfo()">Save</button>
+        <table id="tableContainer"></table>
+        <script>
+            let playlistSelectEl = document.getElementById("playlistSelect");
+            let containerEl = document.getElementById("tableContainer");
+            let params = new URLSearchParams(document.location.search);
+
+            let loadedPlaylist = [];
+
+            fetch("/get-playlists")
+            .then((response) => response.json())
+            .then((data) => {
+                playlistSelectEl.innerHTML = "";
+                data.playlists.forEach((filename) => {
+                    let option = document.createElement("option");
+                    option.value = filename;
+                    option.textContent = filename;
+                    playlistSelectEl.appendChild(option);
+                });
+
+                playlistSelectEl.addEventListener("change", loadTable);
+                if (playlistSelectEl.value != 0) {
+                    loadTable();
+                }
+            });
+
+            function loadTable() {
+                containerEl.innerHTML = "";
+                let deck = playlistSelectEl.value;
+                let ids = [];
+
+                fetch(`/load-playlist?filename=${encodeURIComponent(deck)}`)
+                .then(response => response.json())
+                .then(data => {
+                    loadedPlaylist = data.songs;
+                    loadedPlaylist.forEach(k => {
+                        let rowEl = document.createElement("tr");
+                        rowEl.id = k;
+                        containerEl.appendChild(rowEl);
+
+                        let songIdEl = document.createElement("td");
+                        songIdEl.className = "idCell";
+
+                        let songTitleEl = document.createElement("td");
+                        let songTitleInput = document.createElement("input");
+                        songTitleEl.className = "titleCell";
+                        songTitleInput.className = "titleInput";
+
+                        let songImageEl = document.createElement("td");
+                        songImageEl.className = "imageCell";
+                        songImageEl.addEventListener("click", songSelectHandler);
+
+                        rowEl.appendChild(songIdEl);
+                        rowEl.appendChild(songTitleEl);
+                        rowEl.appendChild(songImageEl);
+                        
+                        songTitleEl.appendChild(songTitleInput);
+
+                        songIdEl.innerHTML = k;
+
+                        ids.push(k);
+                    })
+                    fillTableTitles(deck);
+                });
+            }
+
+            function fillTableTitles(deck) {
+                fetch("/get-mapping?filename=" + deck)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.log("no mapping found for " + deck);
+                    } else {
+                        Object.keys(data).forEach((k) => {
+                            let cell = document.getElementById(k).getElementsByClassName("titleCell")[0];
+                            let cellInput = cell.getElementsByTagName("input")[0];
+                            cellInput.value = data[k];
+                        });
+                    }
+                    fillTableImages(deck);
+                })
+            }
+
+            function fillTableImages(deck) {
+                fetch("/get-images?filename=" + deck)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.log("no images found for " + deck);
+                    } else {
+                        Object.keys(data).forEach((k) => {
+                            let row = document.getElementById(k);
+                            let cell = row.getElementsByClassName("imageCell")[0];
+                            cell.innerHTML = "";
+
+                            let imgEl = document.createElement("img");
+                            imgEl.src = data[k];
+                            imgEl.style.maxWidth = "100px";
+                            imgEl.style.maxHeight = "100px";
+
+                            cell.appendChild(imgEl);
+                            cell.dataset.imageData = imgEl.src;
+                        });
+                    }
+                })
+            }
+
+            function songPasteHandler(event) {
+                let items = event.clipboardData.items;
+                let targetEl = document.querySelector("TD[selected]");
+
+                for (let item of items) {
+                    if (item.type.indexOf("image") !== -1) {
+                        let imgFile = item.getAsFile();
+
+                        if (targetEl) {
+                            let reader = new FileReader();
+
+                            reader.onload = function (e) {
+                                let imgEl = document.createElement("img");
+                                imgEl.src = e.target.result;
+                                imgEl.style.maxWidth = "100px";
+                                imgEl.style.maxHeight = "100px";
+
+                                if (targetEl.tagName !== "TD") {
+                                    console.log("AAAAAA BAD THING");
+                                }
+
+                                targetEl.innerHTML = "";
+                                targetEl.appendChild(imgEl);
+                                targetEl.dataset.imageData = imgEl.src;
+                            }
+
+                            reader.readAsDataURL(imgFile);
+                        }
+                    }
+                }
+            }
+            
+            function keyUpHandler(event) {
+                let targetEl = document.querySelector("TD[selected]");
+                switch (event.key) {
+                    case "Escape":
+                        document.querySelectorAll("TD[selected]").forEach(el => {
+                            el.removeAttribute("selected");
+                            el.style.border = "";
+                            el.querySelectorAll("img").forEach(img => {
+                                img.style.border = "";
+                            })
+                        })
+                        break;
+                    case "Backspace":
+                    case "Delete":
+                        let formTags = ['INPUT', 'TEXTAREA', 'SELECT', 'OPTION'];
+                        if (targetEl && !formTags.includes(event.target.tagName) &&
+                                confirm(`Do you want to delete the image of ${targetEl.parentElement.id}`)) {
+                            targetEl.innerHTML = "";
+                        }
+                        break;
+                    default:
+                }
+            }
+
+            function songSelectHandler(event) {
+                let targetEl = event.target;
+                if (targetEl.tagName !== "TD") {
+                    targetEl = targetEl.parentElement;
+                }
+
+                let borderStyle = "2px solid #5599CC"
+                if (targetEl.getAttribute("selected")) {
+                    borderStyle = "";
+                    targetEl.removeAttribute("selected");
+                } else {
+                    targetEl.setAttribute("selected", "true");
+                    document.querySelectorAll("TD[selected]").forEach(el => {
+                        el.style.border = "";
+                        if (el !== targetEl) {
+                            el.removeAttribute("selected");
+                        }
+                        el.querySelectorAll("img").forEach(img => {
+                            img.style.border = "";
+                        })
+                    })
+                }
+                targetEl.style.border = borderStyle;
+                let imgs = targetEl.getElementsByTagName("img");
+                if (imgs.length > 0) {
+                    imgs[0].style.border = borderStyle;
+                }
+            }
+
+            function saveInfo() {
+                if (!confirm("Are you sure you want to save (and potentially overwrite) current data?")) {
+                    return;
+                }
+                let rows = document.querySelectorAll("tr");
+                let mappingData = {
+                    "filename": playlistSelectEl.value,
+                    "mapping": {}
+                };
+                let imageRequest = {};
+                imageRequest["filename"] = playlistSelectEl.value;
+                imageRequest["imageList"] = [];
+
+                rows.forEach(row => {
+                    let songId = row.id;
+                    let songTitle = row.getElementsByClassName("titleCell")[0].getElementsByTagName("input")[0].value;
+                    if (songTitle === "") {
+                        songTitle = row.id;
+                    }
+                    let songImage = row.getElementsByClassName("imageCell")[0].dataset.imageData || null;
+
+                    mappingData.mapping[songId] = songTitle;
+                    imageRequest.imageList.push({
+                        "id": songId,
+                        "image": songImage
+                    });
+                });
+                
+                fetch("/write-mapping", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(mappingData)
+                })
+                .then((response) => response.json())
+                .then(data => {
+                    console.log(data.message || data.error);
+                });
+
+                fetch("/write-images", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(imageRequest)
+                })
+                .then((response) => response.json())
+                .then(data => {
+                    console.log(data.message || data.error);
+                })
+                
+
+                console.log(mappingData);
+            }
+
+            document.addEventListener("paste", songPasteHandler);
+            document.addEventListener("keyup", keyUpHandler)
+        </script>
+    </body>
+</html>
+<style>
+#go-home {
+    position: absolute;
+    right: 100px;
+    top: 30px;
+    padding: 5px;
+}
+#go-practice {
+    position: absolute;
+    right: 30px;
+    top: 30px;
+    padding: 5px;
+}
+#go-edit {
+    position: absolute;
+    right: 170px;
+    top: 30px;
+    padding: 5px;
+}
+.navigation:hover {
+    background-color: lightblue;
+    cursor: default;
+    color: black;
+    text-decoration: none;
+}
+#tableContainer {
+    table-layout: fixed;
+    width: 100%;
+}
+td {
+    border: 1px solid black;
+}
+.idCell {
+    width: 30%;
+}
+.titleCell {
+    width: 30%;
+    text-align: center;
+}
+.titleInput {
+    width: 97%;
+}
+.imageCell {
+    width: 40%;
+}
+</style>

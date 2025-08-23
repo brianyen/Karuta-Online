@@ -10,3 +10,5 @@ playlist_videos.json
 progress.json
 songs/*
 playlists/*
+custom/*
+images/*

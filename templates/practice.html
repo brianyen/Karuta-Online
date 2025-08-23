@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Karuta Practice</title>
+    <style>
+      #progress-container {
+        width: 100%;
+        background-color: #ddd;
+        height: 25px;
+        margin-top: 10px;
+      }
+      #progress-bar {
+        width: 0%;
+        height: 100%;
+        background-color: green;
+        text-align: center;
+        color: white;
+      }
+      #game-space {
+        border: 1px solid black;
+        position: relative;
+        width: 100%;
+        height: auto;
+        display: grid;
+        gap: 3px;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      }
+      #stats-box {
+        position: absolute;
+        right: 0%;
+        width: 30%;
+        bottom: -200px;
+        height: 180px;
+        border: 1px solid gray;
+      }
+      #go-home {
+        position: absolute;
+        right: 100px;
+        top: 30px;
+        padding: 5px;
+      }
+      #go-practice {
+        position: absolute;
+        right: 30px;
+        top: 30px;
+        padding: 5px;
+      }
+      #go-edit {
+          position: absolute;
+          right: 170px;
+          top: 30px;
+          padding: 5px;
+      }
+      ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      li {
+        cursor: pointer;
+        padding: 5px;
+        border-bottom: 1px solid #ccc;
+      }
+      li.played {
+        background-color: gray;
+      }
+      li.correct {
+        background-color: #8cb88c
+      }
+      li.rerolled {
+        background-color: #d57a64
+      }
+      li:hover {
+        background-color: #f0f0f0;
+      }
+      .right-align {
+        float: right;
+      }
+      .customInput {
+        float: right;
+      }
+      #customInput {
+        width: 80%;
+        height: 400px;
+        display: none;
+        z-index: 1000;
+        resize: none;
+      }
+      .card {
+        width: 110px;
+        height: 220px;
+        margin: 5px;
+        border: 1px solid gray;
+        overflow-wrap: break-word;
+        overflow-y: hidden;
+        text-align: center;
+        font-size: 14px;
+      }
+      .card-image {
+        height: 67%;
+        top: 1px;
+        max-width: 100%;
+        max-height: 67%;
+        object-fit: contain;
+      }
+      .card-text {
+        height: 33%;
+        width: 95%;
+        bottom: 1px;
+        background-color: white;
+      }
+      .navigation:hover {
+        background-color: lightblue;
+        cursor: default;
+        color: black;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Karuta Practice</h1>
+    <a href="/"><div id="go-home" class="navigation">Home</div></a>
+    <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
+    <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
+    <input type="text" id="playlistUrl" placeholder="Enter YouTube playlist URL"/>
+    <button id="runScript">Download & Convert Playlist</button>
+    <button id="clearSongs">Clear Songs Folder</button>
+    <h2>Progress</h2>
+    <div id="progress-container">
+      <div id="progress-bar">0%</div>
+    </div>
+    <h2>Downloaded Playlists</h2>
+    <select id="playlistSelect"></select>
+    <button id="loadPlaylist">Load Playlist</button>
+    <button id="generateDeck">Generate/Reset Deck</button>
+    <button class="customInput" id="saveCustom" onclick="saveCustom()">Save Mapping</button>
+    <button class="customInput" id="loadCustom" onclick="loadCustom()">Load Mapping</button>
+    <button class="customInput" id="toggleCustom">Show Custom Input Visibility</button><br>
+    <textarea class="customInput" id="customInput"></textarea>
+    <hr></hr>
+    <button id="pauseSong">Pause/Resume Current Song</button>
+    <button id="playRandom">Play Random Song</button>
+    <h2>Game</h2>
+    <div id="game-space"></div>
+    <h2>Autoplay Settings</h2>
+    <label for="autoplaySlider">Play Duration (seconds): </label>
+    <input type="range" id="autoplaySlider" min="0" max="60" value="30"/>
+    <span id="sliderValue">30</span> seconds
+    <br/>
+    <label for="autoplaySwitch">Autoplay: </label>
+    <input type="checkbox" id="autoplaySwitch"/>
+    <button id="playNext">Play Next Song</button>
+    <p>
+      Countdown:
+      <span id="countdown">0</span> seconds
+    </p>
+    <h2>Song Counters</h2>
+    <p>
+      Total Songs: <span id="totalSongs">0</span> | Songs Left:
+      <span id="songsLeft">0</span>
+    </p>
+
+    <h2>Audio Player</h2>
+    <button id="toggleAudioPlayer">Hide Audio Player Visibility</button><br>
+    <div id="audio">
+      <p id="currentSong">None</p>
+      <audio id="audioPlayer" controls></audio>
+    </div>
+    <h2>Played Songs from Loaded Playlist</h2>
+    <button id="togglePlaylistVisibility">Hide Playlist Visibility</button>
+    <div id="playlists">
+      <ul id="played-song-list"></ul>
+      <h2>Loaded Playlist Songs (Unplayed)</h2>
+      <ul id="song-list"></ul>
+    </div>
+    
+    <h2>Individual Card Stats</h2>
+    <button id="toggleStatsVisibility">Hide Card Stats</button>
+    <div id="card-stats"></div>
+
+    <script>
+      let cardstatsEl = document.getElementById("card-stats");
+      let autoplaySliderEl = document.getElementById("autoplaySlider");
+      let countdownEl = document.getElementById("countdown");
+      let audioPlayerEl = document.getElementById("audioPlayer");
+      let sliderValueEl = document.getElementById("sliderValue");
+      let pauseSongEl = document.getElementById("pauseSong");
+      let playRandomEl = document.getElementById("playRandom");
+      let playlistSelectEl = document.getElementById("playlistSelect");
+      let customInputEl = document.getElementById("customInput");
+      let gameSpaceEl = document.getElementById("game-space");
+
+      let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
+      let autoplayTimer = null;
+      let countdownInterval = null;
+      let loadedPlaylist = [];
+
+      let deckIsGenerated = false;
+      let deckList = {};
+      let cardNameMapping = {};
+      let images = {};
+      let cardsLeft = 0;
+      
+      let songStart = 0;
+
+      let stats = {}
+
+      let correct = true;
+
+      function getDisplayName(song) {
+        return song.endsWith(".mp3") ? song.slice(0, -4) : song;
+      }
+
+      document.getElementById("runScript").addEventListener("click", function () {
+        const playlistUrl = document.getElementById("playlistUrl").value;
+        if (!playlistUrl) {
+          alert("Please enter a YouTube playlist URL.");
+          return;
+        }
+        fetch("/run-script", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playlist_url: playlistUrl }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.message || data.error);
+            loadPlaylistsList();
+          })
+          .catch((error) => console.error("Error:", error));
+      });
+
+      document.getElementById("clearSongs").addEventListener("click", function () {
+        fetch("/clear-songs", { method: "POST" })
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.message || data.error);
+            playedSongsOrder = [];
+            localStorage.removeItem("playedSongs");
+            updateSongListUI();
+            updatePlayedSongsUI();
+          })
+          .catch((error) => console.error("Error:", error));
+      });
+
+      function updateProgress() {
+        fetch("/progress")
+          .then((response) => response.json())
+          .then((data) => {
+            let progressEl = document.getElementById("progress-bar");
+            let percentage = data.total > 0 ? (data.done / data.total) * 100 : 0;
+            progressEl.style.width = percentage + "%";
+            progressEl.innerText = Math.round(percentage) + "%";
+            if (data.done === data.total && data.total > 0) {
+              updateSongListUI();
+              updatePlayedSongsUI();
+            }
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      function updateSongListUI() {
+        let songList = document.getElementById("song-list");
+        songList.innerHTML = "";
+        if (!loadedPlaylist || loadedPlaylist.length === 0) {
+          songList.innerHTML = "<li>No playlist loaded.</li>";
+          document.getElementById("totalSongs").innerText = "0";
+          document.getElementById("songsLeft").innerText = "0";
+          return;
+        }
+        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
+        document.getElementById("totalSongs").innerText = loadedPlaylist.length;
+        document.getElementById("songsLeft").innerText = unplayedSongs.length;
+        unplayedSongs.forEach((song) => {
+          let li = document.createElement("li");
+          li.textContent = getDisplayName(song);
+          li.onclick = function () {
+            cancelAutoplayTimer();
+            playSong(song);
+          };
+          songList.appendChild(li);
+        });
+      }
+
+      function updatePlayedSongsUI() {
+        let playedList = document.getElementById("played-song-list");
+        playedList.innerHTML = "";
+        if (!loadedPlaylist || loadedPlaylist.length === 0) return;
+        const playedSongs = playedSongsOrder.filter((song) => loadedPlaylist.includes(song));
+        playedSongs.forEach((song) => {
+          let li = document.createElement("li");
+          li.textContent = getDisplayName(song);
+          li.classList.add("played");
+          li.onclick = function () {
+            cancelAutoplayTimer();
+            playSong(song);
+          };
+          playedList.appendChild(li);
+        });
+      }
+
+      function updateCardStatsUI() {
+        cardstatsEl.innerHTML = "";
+        if (deckList.length === 0) {
+          return;
+        }
+
+        const playedCards = Object.keys(deckList).filter((songTitle) => {
+          return "timeTaken" in deckList[songTitle];
+        });
+        playedCards.sort((s1, s2) => {
+          if (deckList[s1]["status"] === "rerolled" && deckList[s2]["status"] === "correct") {
+            return 1;
+          } else if (deckList[s1]["status"] === "correct" && deckList[s2]["status"] === "rerolled") {
+            return -1;
+          } else {
+            return deckList[s1]["timeTaken"] - deckList[s2]["timeTaken"];
+          }
+        });
+
+        playedCards.forEach((songTitle) => {
+          let li = document.createElement("li");
+          li.innerHTML = `${deckList[songTitle]["timeTaken"] / 1000}: ${getDisplayName(songTitle)}<span class="right-align">Remaining Cards After Taken: ${deckList[songTitle]["cardsLeft"]}</span>`;
+          li.classList.add(deckList[songTitle]["status"]);
+          cardstatsEl.appendChild(li);
+        })
+      }
+
+      function startAutoplayTimer() {
+        let duration = parseInt(autoplaySliderEl.value, 10);
+        let secondsLeft = duration;
+        countdownEl.innerText = secondsLeft;
+        countdownInterval = setInterval(() => {
+          secondsLeft--;
+          if (secondsLeft <= 0) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+          }
+          countdownEl.innerText = secondsLeft;
+        }, 1000);
+        autoplayTimer = setTimeout(() => {
+          cancelAutoplayTimer();
+          playNextSong();
+        }, duration * 1000);
+      }
+
+      function cancelAutoplayTimer() {
+        if (autoplayTimer !== null) {
+          clearTimeout(autoplayTimer);
+          autoplayTimer = null;
+        }
+        if (countdownInterval !== null) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+        countdownEl.innerText = "0";
+      }
+
+      async function playNextSong() {
+        if (!loadedPlaylist || loadedPlaylist.length === 0) {
+          alert("No playlist loaded.");
+          return;
+        }
+        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
+        if (unplayedSongs.length === 0) {
+          alert("No unplayed songs available. Reset played songs to choose again.");
+          return;
+        }
+
+        await handlePreviousSong();
+        
+        let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
+
+        songStart = performance.now();
+        correct = false;
+
+        playSong(randomSong);
+      }
+
+      function playSong(song) {
+        cancelAutoplayTimer();
+        let audioSource = "songs/" + encodeURIComponent(song);
+        audioPlayerEl.src = audioSource;
+        audioPlayerEl.load();
+
+        function attemptPlayback() {
+          audioPlayerEl.play().catch((error) => {
+            console.warn("Playback failed (promise rejection), retrying...", error);
+            setTimeout(attemptPlayback, 500);
+          });
+        }
+
+        function onCanPlayThrough() {
+          audioPlayerEl.removeEventListener("canplaythrough", onCanPlayThrough);
+          autoplaySlider.min = 0;
+          autoplaySlider.max = Math.floor(audioPlayerEl.duration);
+          if (parseInt(autoplaySlider.value, 10) > audioPlayerEl.duration) {
+            autoplaySlider.value = Math.floor(audioPlayerEl.duration / 2);
+          }
+          sliderValueEl.innerText = autoplaySliderEl.value;
+          let halfDuration = audioPlayerEl.duration / 2;
+          let randomStart = Math.random() * halfDuration;
+          audioPlayerEl.currentTime = randomStart;
+
+          attemptPlayback();
+          
+          audioPlayerEl.onerror = function () {
+            console.warn("Audio error event fired, retrying playback...");
+            setTimeout(attemptPlayback, 500);
+          };
+          if (document.getElementById("autoplaySwitch").checked) {
+            startAutoplayTimer();
+          }
+        }
+        audioPlayerEl.addEventListener("canplaythrough", onCanPlayThrough);
+
+        document.getElementById("currentSong").innerText = getDisplayName(song);
+        const index = playedSongsOrder.indexOf(song);
+        if (index !== -1) {
+          playedSongsOrder.splice(index, 1);
+        }
+        playedSongsOrder.unshift(song);
+        localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
+        updateSongListUI();
+        updatePlayedSongsUI();
+      }
+
+      pauseSongEl.addEventListener("click", function() {
+        if (audioPlayerEl.paused) {
+          audioPlayerEl.play();
+        } else {
+          audioPlayerEl.pause();
+        }
+      });
+
+      audioPlayerEl.addEventListener("play", function() {
+        pauseSongEl.innerHTML = "Pause Current Song";
+      });
+
+      audioPlayerEl.addEventListener("pause", function() {
+        pauseSongEl.innerHTML = "Play Current Song";
+      });
+
+      playRandomEl.addEventListener("click", async function () {
+        cancelAutoplayTimer();
+        if (!loadedPlaylist || loadedPlaylist.length === 0) {
+          alert("No playlist loaded.");
+          return;
+        }
+        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
+        if (unplayedSongs.length === 0) {
+          alert("No unplayed songs available. Reset played songs to choose again.");
+          return;
+        }
+        if (!deckIsGenerated) {
+          alert("Generate a deck first.");
+          return;
+        }
+
+        await handlePreviousSong();
+        
+        let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
+        console.log("random song: " + randomSong);
+
+        songStart = performance.now();
+        correct = false;
+        
+        playSong(randomSong);
+      });
+
+      document.getElementById("playNext").addEventListener("click", function () {
+        cancelAutoplayTimer();
+        playNextSong();
+      });
+
+      autoplaySliderEl.addEventListener("input", function () {
+        sliderValueEl.innerText = this.value;
+      });
+
+      document.getElementById("toggleAudioPlayer").addEventListener("click", function (event) {
+        toggleDivVisibility(event, "audio", "Audio Player");
+      });
+
+      document.getElementById("togglePlaylistVisibility").addEventListener("click", function (event) {
+        toggleDivVisibility(event, "playlists", "Playlist");
+      });
+
+      document.getElementById("toggleStatsVisibility").addEventListener("click", function(event) {
+        toggleDivVisibility(event, "card-stats", "Card");
+      });
+
+      document.getElementById("toggleCustom").addEventListener("click", function(event) {
+        toggleDivVisibility(event, "customInput", "Custom Input");
+      })
+
+      function toggleDivVisibility(event, toToggle, toggleText) {
+        let toggleEl = document.getElementById(toToggle);
+        if (toggleEl.style.display === "none") {
+          toggleEl.style.display = "block";
+          event.target.innerHTML = `Hide ${toggleText} Visibility`;
+        } else {
+          toggleEl.style.display = "none";
+          event.target.innerHTML = `Show ${toggleText} Visibility`;
+        }
+      }
+
+      setInterval(updateProgress, 2000);
+
+      function loadPlaylistsList() {
+        fetch("/get-playlists")
+          .then((response) => response.json())
+          .then((data) => {
+            playlistSelectEl.innerHTML = "";
+            data.playlists.forEach((filename) => {
+              let option = document.createElement("option");
+              option.value = filename;
+              option.textContent = filename;
+              playlistSelectEl.appendChild(option);
+            });
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      document.getElementById("loadPlaylist").addEventListener("click", function () {
+        let filename = playlistSelectEl.value;
+        if (!filename) {
+          alert("No playlist selected.");
+          return;
+        }
+        fetch(`/load-playlist?filename=${encodeURIComponent(filename)}`)
+          .then((response) => response.json())
+          .then((data) => {
+            loadedPlaylist = data.songs;
+            playedSongsOrder = playedSongsOrder.filter((song) => loadedPlaylist.includes(song));
+            localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
+            updateSongListUI();
+            updatePlayedSongsUI();
+            alert("Playlist loaded with " + loadedPlaylist.length + " songs.");
+
+            if (customInputEl.value === "") {
+              let customOut = "";
+              loadedPlaylist.forEach((v) => {
+                customOut += `${v}\t${v}\n`
+              })
+              customInputEl.value = customOut;
+              cardNameMapping = {};
+            }
+          })
+          .catch((error) => console.error("Error:", error));
+      });
+
+      document.getElementById("generateDeck").addEventListener("click", function () {
+        if (deckIsGenerated && !confirm("Are you sure you want to generate a new deck?")) {
+          return;
+        }
+        playedSongsOrder = [];
+        localStorage.removeItem("playedSongs");
+        cardstatsEl.innerHTML = "";
+        updateSongListUI();
+        updatePlayedSongsUI();
+
+        let deckLength = (loadedPlaylist.length > 80) ? 50 : Math.floor(loadedPlaylist.length / 4) * 2;
+        if (deckLength == 0) {
+          alert("Please load a deck first.");
+          return;
+        }
+        if (deckLength > loadedPlaylist.length) {
+          alert("Advancement: How did we get here? (debug)");
+          return;
+        }
+
+        stats = {
+          "errors": 0,
+          "rerolls": 0,
+          "correct": 0,
+          "timetaken": 0,
+          "lastCard": 0
+        }
+
+        cardNameMapping = parseCustomInput(customInputEl.value);
+
+        deckList = {}
+        cardsLeft = deckLength;
+
+        let songsCopy = loadedPlaylist.slice();
+        let p1 = songsCopy.length;
+        while (p1 != 0) {
+          let p2 = Math.floor(Math.random() * p1);
+          p1--;
+          [songsCopy[p1], songsCopy[p2]] = [songsCopy[p2], songsCopy[p1]];
+        }
+        for (i = 0; i < deckLength; i++) {
+          deckList[songsCopy[i]] = {};
+        }
+
+        gameSpaceEl.innerHTML = "";
+
+        let statsBox = document.createElement("pre");
+        statsBox.id = "stats-box";
+        gameSpaceEl.appendChild(statsBox);
+        updateStatsBox();
+
+        Object.keys(deckList).forEach((songTitle) => {
+          gameSpaceEl.appendChild(createCardElement(songTitle));
+        });
+        deckIsGenerated = true;
+      });
+
+      function handleSongChoice(event) {
+        if (correct) {
+          return;
+        }
+        if (playedSongsOrder.length < 1) {
+          return;
+        }
+        let target = (event.target.id === "") ? event.target.parentElement : event.target;
+        chosenTitle = target.id;
+        currentSong = playedSongsOrder[0];
+        
+        if (currentSong === chosenTitle) {
+          correct = true;
+          target.removeEventListener("click", handleSongChoice);
+          target.innerHTML = "";
+          target.style.borderColor = "white";
+          cardsLeft--;
+
+          let timeForCard = Math.round(performance.now() - songStart); 
+          deckList[chosenTitle]["timeTaken"] = timeForCard;
+          deckList[chosenTitle]["cardsLeft"] = cardsLeft;
+          deckList[chosenTitle]["status"] = "correct";
+          stats["correct"] += 1;
+          stats["timetaken"] += timeForCard;
+          stats["lastCard"] = timeForCard;
+          updateCardStatsUI();
+
+          if (cardsLeft == 0) {
+            alert(`debug: now this is epical, time is ${stats["timetaken"] / 1000}\n
+                you got ${stats["correct"]} correct\n
+                you made ${stats["errors"]} errors\n
+                you received ${stats["rerolls"]} rerolls`);
+          }
+        } else if (!correct) {
+          let songDict = deckList[chosenTitle];
+          stats["errors"] += 1;
+          if (addNextCard().then((res) => res)) {
+            cardsLeft++;
+          }
+        }
+
+        updateStatsBox();
+      }
+
+      function handlePreviousSong() {
+        if (!correct && playedSongsOrder.length > 0 && Object.keys(deckList).includes(playedSongsOrder[0])) {
+          console.log("rerolling card");
+          let toReroll = document.getElementById(playedSongsOrder[0]);
+          return addNextCard(toReroll).then((res) => {
+            if (!res) {
+              toReroll.removeEventListener("click", handleSongChoice);
+              toReroll.innerHTML = "";
+              toReroll.style.borderColor = "white";
+              cardsLeft--;
+            }
+            let timeForCard = Math.round(performance.now() - songStart); 
+            deckList[playedSongsOrder[0]]["status"] = "rerolled";
+            deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
+            deckList[playedSongsOrder[0]]["cardsLeft"] = cardsLeft;
+            stats["timetaken"] += timeForCard;
+            stats["lastCard"] = timeForCard;
+            stats["rerolls"] += 1;
+            updateCardStatsUI();
+            updateStatsBox();
+            return true;
+          });
+        }
+      }
+
+      function parseCustomInput(input) {
+        let out = {}
+        try {
+          out = JSON.parse(input);
+        } catch (error) {
+          console.log("custom input is not json, attempting sheet parse")
+        }
+        let lines = input.split(/\r?\n/);
+        lines.forEach((line) => {
+          let parts = line.split(/\t/);
+          if (parts.length === 2) {
+            out[parts[0]] = parts[1]
+          }
+        })
+        return out;
+      }
+
+      function addNextCard(toReplace = null) {
+        let remainingCards = loadedPlaylist.filter((song) => {
+          return !playedSongsOrder.includes(song) && !Object.keys(deckList).includes(song);
+        });
+
+        return new Promise((resolve) => {
+          
+          if (remainingCards.length === 0) {
+            resolve(false);
+          }
+
+          nextCardTitle = remainingCards[Math.floor(Math.random() * remainingCards.length)];
+
+          if (toReplace === null) {
+            gameSpaceEl.appendChild(createCardElement(nextCardTitle));
+            resolve(true);
+          } else {
+            toReplace.style.borderColor = "red";
+            toReplace.style.borderWidth = "thick";
+            playRandomEl.disabled = true;
+            correct = true;
+            console.log(correct);
+            setTimeout(() => {
+              gameSpaceEl.replaceChild(createCardElement(nextCardTitle), toReplace);
+              let next = document.getElementById(nextCardTitle);
+              next.style.borderColor = "red";
+              next.style.borderWidth = "thick";
+              setTimeout(() => {
+                next.style.borderColor = "gray"; 
+                next.style.borderWidth = "inherit";
+                playRandomEl.disabled = false;
+                correct = false;
+                resolve(true);
+              }, 1000);
+            }, 1000);
+          }
+        });
+      }
+
+      function createCardElement(songTitle) {
+        let songCard = document.createElement("div");
+
+        let cardImage = document.createElement("img");
+        let cardText = document.createElement("div");
+        songCard.appendChild(cardImage);
+        songCard.appendChild(cardText);
+          
+        songCard.className = "card";
+        songCard.id = songTitle;
+        cardImage.className = "card-image";
+        cardText.className = "card-text";
+
+        let cardTitle = (cardNameMapping[songTitle] != undefined) ? cardNameMapping[songTitle] : songTitle;
+
+        songCard.addEventListener("click", handleSongChoice);
+
+        if (cardTitle.slice(-4) != ".mp3") {
+          cardText.innerHTML = cardTitle;
+        } else {
+          cardText.innerHTML = cardTitle.slice(0, -4);
+        }
+        cardImage.src = images[songTitle] || "";
+
+        deckList[songTitle] = {}
+
+        return songCard;
+      }
+
+      function updateStatsBox() {
+        document.getElementById("stats-box").innerHTML = JSON.stringify(stats, null, 2).replace(/[{}"]/g, "");
+      }
+
+      function saveCustom() {
+        if (!confirm(`Are you sure you want to overwrite any previous mapping for ${playlistSelectEl.value}?`)) {
+          return;
+        }
+
+        jsonData = {
+          "mapping": parseCustomInput(customInputEl.value),
+          "filename": playlistSelectEl.value
+        }
+        noMapping = Object.entries(jsonData.mapping).every(([key, value]) => key === value);
+        if (noMapping) {
+          alert("No mapping detected, nothing will be written")
+          return;
+        }
+
+        fetch("/write-mapping", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(jsonData)
+        })
+        .then((response) => response.json())
+        .then(data => {
+          alert(data.message || data.error);
+        });
+      }
+
+      function loadCustom() {
+        fetch("/get-mapping?filename=" + playlistSelectEl.value)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            alert(data.error);
+          } else {
+            customString = "";
+            Object.keys(data).forEach((k) => {
+              customString += `${k}\t${data[k]}\n`;
+            });
+            customInputEl.value = customString;
+          }
+        });
+
+        fetch("/get-images?filename=" + playlistSelectEl.value)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            alert(data.error);
+          } else {
+            Object.keys(data).forEach((k) => {
+              images[k] = data[k];
+            })
+          }
+        });
+      }
+
+      loadPlaylistsList();
+    </script>
+  </body>
+</html>

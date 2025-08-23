@@ -3,15 +3,26 @@ import subprocess
 import os
 import json
 import random
+import base64
 
 app = Flask(__name__)
 
 SONGS_FOLDER = "songs"
 PROGRESS_FILE = "progress.json"
+MAPPING_FOLDER = "custom"
+IMAGE_FOLDER = "images"
 
 @app.route('/')
 def home():
   return render_template("index.html")
+
+@app.route('/practice')
+def practice():
+  return render_template("practice.html")
+
+@app.route('/edit-deck')
+def edit_deck():
+  return render_template("edit.html")
 
 @app.route('/run-script', methods=['POST'])
 def run_script():
@@ -81,5 +92,86 @@ def load_playlist():
     songs = json.load(f)
   return jsonify({"songs": songs})
 
+@app.route('/write-mapping', methods=['POST'])
+def write_custom_mapping():
+  try:
+    data = request.json
+    filename = data.get("filename")
+    mapping = data.get("mapping")
+
+    print("filename", filename)
+    print("mapping", mapping)
+
+    if not os.path.isdir(MAPPING_FOLDER):
+      os.mkdir(MAPPING_FOLDER)
+    with open(os.path.join(MAPPING_FOLDER, filename), "w") as f:
+      f.write(json.dumps(mapping, indent=4))
+    return jsonify({"message": "Mapping saved successfully!"})
+  except Exception as e:
+    print("Error saving mapping", e)
+    return jsonify({"error": str(e)}), 500
+   
+@app.route('/get-mapping', methods=['GET'])
+def get_custom_mapping():
+  filename = request.args.get("filename")
+  path = os.path.join(MAPPING_FOLDER, filename)
+  
+  if os.path.exists(path):
+    with open(path, "r") as f:
+      return json.load(f)
+  return jsonify({"error": "Custom mapping not found"})
+
+@app.route('/write-images', methods=['POST'])
+def write_custom_images():
+  try:
+    data = request.json
+    filename = data.get("filename")
+    image_list = data.get("imageList")
+    path = os.path.join(IMAGE_FOLDER, filename)
+
+    if not os.path.isdir(IMAGE_FOLDER):
+      os.mkdir(IMAGE_FOLDER)
+    if not os.path.isdir(path):
+      os.mkdir(path)
+    for file in os.listdir(path):
+      file_path = os.path.join(path, file)
+      if os.path.isfile(file_path):
+        os.remove(file_path)
+    for obj in image_list:
+      if obj["image"]:
+        header, encoded = obj["image"].split(',', 1)
+        file_ext = header.split('/')[1].split(';')[0]
+        file_name = f"{obj["id"]}.{file_ext}"
+        file_path = os.path.join(path, file_name)
+        img_bytes = base64.b64decode(encoded)
+        with open(file_path, "wb") as f:
+          f.write(img_bytes)
+    
+    return jsonify({"message": "Images saved successfully"})
+  except Exception as e:
+    return jsonify({"error", str(e)}), 500
+
+@app.route('/get-images', methods=['GET'])
+def get_custom_images():
+  filename = request.args.get("filename")
+  path = os.path.join(IMAGE_FOLDER, filename)
+  out = {}
+
+  if not os.path.isdir(IMAGE_FOLDER):
+      os.mkdir(IMAGE_FOLDER)
+  if not os.path.isdir(path):
+    os.mkdir(path)
+  for file in os.listdir(path):
+    file_path = os.path.join(path, file)
+    with open(file_path, "rb") as f:
+      encoded = base64.b64encode(f.read()).decode('utf-8')
+      ext = path.split('.')[-1]
+      out[file[:file.rfind('.')]] = f"data:image/{ext};base64,{encoded}"
+  try:
+    return jsonify(out)
+  except Exception as e:
+    return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
   app.run(debug=True)
+
