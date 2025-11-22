@@ -53,6 +53,7 @@ def normalize_volume(mp3_file):
     normalized_file
   ], check=True)
   os.replace(normalized_file, mp3_file)
+  os.remove(normalized_file)
 
 def mp4Tomp3(path):
   base, ext = os.path.splitext(path)
