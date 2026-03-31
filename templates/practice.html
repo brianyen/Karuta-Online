@@ -187,6 +187,7 @@
       let sliderValueEl = document.getElementById("sliderValue");
       let pauseSongEl = document.getElementById("pauseSong");
       let playRandomEl = document.getElementById("playRandom");
+      let playNextEl = document.getElementById("playNext");
       let playlistSelectEl = document.getElementById("playlistSelect");
       let customInputEl = document.getElementById("customInput");
       let gameSpaceEl = document.getElementById("game-space");
@@ -209,6 +210,9 @@
       let correct = true;
 
       function getDisplayName(song) {
+        if (cardNameMapping[song] != undefined) {
+          return cardNameMapping[song];
+        }
         return song.endsWith(".mp3") ? song.slice(0, -4) : song;
       }
 
@@ -367,6 +371,10 @@
           alert("No unplayed songs available. Reset played songs to choose again.");
           return;
         }
+        if (!deckIsGenerated) {
+          alert("Generate a deck first.");
+          return;
+        }
 
         await handlePreviousSong();
         
@@ -469,7 +477,7 @@
         playSong(randomSong);
       });
 
-      document.getElementById("playNext").addEventListener("click", function () {
+      playNextEl.addEventListener("click", function () {
         cancelAutoplayTimer();
         playNextSong();
       });
@@ -713,6 +721,7 @@
             toReplace.style.borderColor = "red";
             toReplace.style.borderWidth = "thick";
             playRandomEl.disabled = true;
+            playNextEl.disabled = true;
             correct = true;
             console.log(correct);
             setTimeout(() => {
@@ -724,6 +733,7 @@
                 next.style.borderColor = "gray"; 
                 next.style.borderWidth = "inherit";
                 playRandomEl.disabled = false;
+                playNextEl.disabled = false;
                 correct = false;
                 resolve(true);
               }, 1000);
