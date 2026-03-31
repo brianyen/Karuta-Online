@@ -12,3 +12,6 @@ songs/*
 playlists/*
 custom/*
 images/*
+stored-songs/*
+fixme.py
+temp.py
