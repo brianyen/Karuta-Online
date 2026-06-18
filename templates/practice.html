@@ -134,6 +134,8 @@
     <select id="playlistSelect"></select>
     <button id="loadPlaylist">Load Playlist</button>
     <button id="generateDeck">Generate/Reset Deck</button>
+    <input type="checkbox" id="experimental" checked/>
+    <label for="experimental">Experimental</label>
     <button class="customInput" id="saveCustom" onclick="saveCustom()">Save Mapping</button>
     <button class="customInput" id="loadCustom" onclick="loadCustom()">Load Mapping</button>
     <button class="customInput" id="toggleCustom">Show Custom Input Visibility</button><br>
@@ -186,6 +188,7 @@
       let audioPlayerEl = document.getElementById("audioPlayer");
       let sliderValueEl = document.getElementById("sliderValue");
       let pauseSongEl = document.getElementById("pauseSong");
+      let experimentalEl = document.getElementById("experimental");
       let playRandomEl = document.getElementById("playRandom");
       let playNextEl = document.getElementById("playNext");
       let playlistSelectEl = document.getElementById("playlistSelect");
@@ -196,6 +199,7 @@
       let autoplayTimer = null;
       let countdownInterval = null;
       let loadedPlaylist = [];
+      let deckname = "";
 
       let deckIsGenerated = false;
       let deckList = {};
@@ -388,7 +392,12 @@
 
       function playSong(song) {
         cancelAutoplayTimer();
-        let audioSource = "songs/" + encodeURIComponent(song);
+        let audioSource;
+        if (experimentalEl.checked) {
+          audioSource = "stored-songs/" + deckname + "/" + encodeURIComponent(song);
+        } else {
+          audioSource = "songs/" + encodeURIComponent(song);
+        }
         audioPlayerEl.src = audioSource;
         audioPlayerEl.load();
 
@@ -469,7 +478,7 @@
         await handlePreviousSong();
         
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
-        console.log("random song: " + randomSong);
+        //console.log("random song: " + randomSong);
 
         songStart = performance.now();
         correct = false;
@@ -532,6 +541,7 @@
 
       document.getElementById("loadPlaylist").addEventListener("click", function () {
         let filename = playlistSelectEl.value;
+        deckname = playlistSelectEl.value.substring(0, playlistSelectEl.value.length - 5);
         if (!filename) {
           alert("No playlist selected.");
           return;
@@ -632,6 +642,7 @@
           target.innerHTML = "";
           target.style.borderColor = "white";
           cardsLeft--;
+          console.log("CORRECT, CARDS LEFT:", cardsLeft)
 
           let timeForCard = Math.round(performance.now() - songStart); 
           deckList[chosenTitle]["timeTaken"] = timeForCard;
@@ -653,6 +664,9 @@
           stats["errors"] += 1;
           if (addNextCard().then((res) => res)) {
             cardsLeft++;
+            console.log("INCORRECT, CARDS LEFT:", cardsLeft)
+          } else {
+            console.log("INCORRECT, CARDS LEFT (OUT OF REPLACEMENTS):", cardsLeft)
           }
         }
 
@@ -669,6 +683,7 @@
               toReroll.innerHTML = "";
               toReroll.style.borderColor = "white";
               cardsLeft--;
+              console.log("FAILED REROLL, CARDS LEFT:", cardsLeft)
             }
             let timeForCard = Math.round(performance.now() - songStart); 
             deckList[playedSongsOrder[0]]["status"] = "rerolled";
@@ -679,6 +694,7 @@
             stats["rerolls"] += 1;
             updateCardStatsUI();
             updateStatsBox();
+            console.log("SUCCESSFUL REROLL, CARDS LEFT:", cardsLeft)
             return true;
           });
         }

@@ -8,6 +8,7 @@ import base64
 app = Flask(__name__)
 
 SONGS_FOLDER = "songs"
+STORED_SONGS_FOLDER = "stored-songs"
 PROGRESS_FILE = "progress.json"
 MAPPING_FOLDER = "custom"
 IMAGE_FOLDER = "images"
@@ -72,6 +73,10 @@ def random_song():
 @app.route('/songs/<filename>')
 def serve_audio(filename):
   return send_file(os.path.join(SONGS_FOLDER, filename))
+
+@app.route('/stored-songs/<deckname>/<filename>')
+def serve_audio_deck(deckname, filename):
+  return send_file(os.path.join(STORED_SONGS_FOLDER, deckname, filename))
 
 @app.route('/get-playlists', methods=['GET'])
 def get_playlists():
