@@ -9,6 +9,8 @@ import time
 total = 0
 done = 0
 PROGRESS_FILE = "progress.json"
+MAX_THREADS = 50
+sema = threading.Semaphore(MAX_THREADS)
 
 def update_progress():
     with open(PROGRESS_FILE, "w") as f:
@@ -54,17 +56,19 @@ def linkToAudioFile(link, downloaded_songs):
             'preferredquality': '192',
         }],
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(link, download=True)
-        # Prepare the filename and force .mp3 extension
-        filename = ydl.prepare_filename(info)
-        base, _ = os.path.splitext(filename)
-        mp3_file = base + ".mp3"
-    # Normalize volume after conversion
-    normalize_volume(mp3_file)
-    downloaded_songs.append(os.path.basename(mp3_file))
-    done += 1
-    update_progress()
+    with sema:
+        print(f"================ ABOUT TO TRY DOWNLOADING LINK: {link}")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(link, download=True)
+            # Prepare the filename and force .mp3 extension
+            filename = ydl.prepare_filename(info)
+            base, _ = os.path.splitext(filename)
+            mp3_file = base + ".mp3"
+        # Normalize volume after conversion
+        normalize_volume(mp3_file)
+        downloaded_songs.append(os.path.basename(mp3_file))
+        done += 1
+        update_progress()
 
 def threadStarting(json_file):
     global total
@@ -94,5 +98,6 @@ if __name__ == "__main__":
         print("No playlist URL provided.")
         sys.exit(1)
     playlist_url = sys.argv[1]
+    print(f'PLAYLIST URL FOUND: ====== {playlist_url} ======')
     playlistToJson(playlist_url)
     threadStarting("playlist_videos.json")
