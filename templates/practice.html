@@ -96,6 +96,7 @@
         overflow-y: hidden;
         text-align: center;
         font-size: 14px;
+        cursor: pointer;
       }
       .card-image {
         height: 67%;
@@ -134,8 +135,6 @@
     <select id="playlistSelect"></select>
     <button id="loadPlaylist">Load Playlist</button>
     <button id="generateDeck">Generate/Reset Deck</button>
-    <input type="checkbox" id="experimental" checked/>
-    <label for="experimental">Experimental</label>
     <button class="customInput" id="saveCustom" onclick="saveCustom()">Save Mapping</button>
     <button class="customInput" id="loadCustom" onclick="loadCustom()">Load Mapping</button>
     <button class="customInput" id="toggleCustom">Show Custom Input Visibility</button><br>
@@ -188,7 +187,6 @@
       let audioPlayerEl = document.getElementById("audioPlayer");
       let sliderValueEl = document.getElementById("sliderValue");
       let pauseSongEl = document.getElementById("pauseSong");
-      let experimentalEl = document.getElementById("experimental");
       let playRandomEl = document.getElementById("playRandom");
       let playNextEl = document.getElementById("playNext");
       let playlistSelectEl = document.getElementById("playlistSelect");
@@ -393,11 +391,7 @@
       function playSong(song) {
         cancelAutoplayTimer();
         let audioSource;
-        if (experimentalEl.checked) {
-          audioSource = "stored-songs/" + deckname + "/" + encodeURIComponent(song);
-        } else {
-          audioSource = "songs/" + encodeURIComponent(song);
-        }
+        audioSource = "stored-songs/" + deckname + "/" + encodeURIComponent(song);
         audioPlayerEl.src = audioSource;
         audioPlayerEl.load();
 
@@ -641,6 +635,8 @@
           target.removeEventListener("click", handleSongChoice);
           target.innerHTML = "";
           target.style.borderColor = "white";
+          target.style.cursor = "auto";
+          target.id = "";
           cardsLeft--;
           console.log("CORRECT, CARDS LEFT:", cardsLeft)
 
@@ -731,11 +727,21 @@
           nextCardTitle = remainingCards[Math.floor(Math.random() * remainingCards.length)];
 
           if (toReplace === null) {
-            gameSpaceEl.appendChild(createCardElement(nextCardTitle));
+            let found = false;
+            for (const child of gameSpaceEl.children) {
+              if (child.id == "" || child.id == null) {
+                gameSpaceEl.replaceChild(createCardElement(nextCardTitle), child);
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              gameSpaceEl.appendChild(createCardElement(nextCardTitle));
+            }
             resolve(true);
           } else {
-            toReplace.style.borderColor = "red";
-            toReplace.style.borderWidth = "thick";
+            toReplace.style.outline = "4px solid red";
+            toReplace.style.outlineOffset = "-4px";
             playRandomEl.disabled = true;
             playNextEl.disabled = true;
             correct = true;
@@ -743,17 +749,17 @@
             setTimeout(() => {
               gameSpaceEl.replaceChild(createCardElement(nextCardTitle), toReplace);
               let next = document.getElementById(nextCardTitle);
-              next.style.borderColor = "red";
-              next.style.borderWidth = "thick";
+              toReplace.style.outline = "4px solid red";
+              toReplace.style.outlineOffset = "-4px";
               setTimeout(() => {
-                next.style.borderColor = "gray"; 
-                next.style.borderWidth = "inherit";
+                toReplace.style.outline = "";
+                toReplace.style.outlineOffset = "";
                 playRandomEl.disabled = false;
                 playNextEl.disabled = false;
                 correct = false;
                 resolve(true);
-              }, 1000);
-            }, 1000);
+              }, 1500);
+            }, 1500);
           }
         });
       }
@@ -770,6 +776,7 @@
         songCard.id = songTitle;
         cardImage.className = "card-image";
         cardText.className = "card-text";
+        songCard.draggable = true;
 
         let cardTitle = (cardNameMapping[songTitle] != undefined) ? cardNameMapping[songTitle] : songTitle;
 
