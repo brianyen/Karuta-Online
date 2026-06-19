@@ -120,6 +120,8 @@ if __name__ == "__main__":
         sys.exit(1)
     playlist_url = sys.argv[1]
     playlist_name = sys.argv[2]
+    while os.path.exists(f"./stored-songs/{playlist_name}"):
+        playlist_name += "_copy"
     print(f'PLAYLIST URL FOUND: ====== {playlist_url} ======')
     playlistToJson(playlist_url, playlist_name)
     threadStarting("playlist_videos.json", playlist_name)
