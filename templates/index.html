@@ -70,7 +70,7 @@
     <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
     <input type="text" id="playlistUrl" placeholder="Enter YouTube playlist URL"/>
     <button id="runScript">Download & Convert Playlist</button>
-    <button id="clearSongs">Clear Songs Folder</button>
+    <input type="text" id="playlistName" placeholder="Enter playlist name"/>
     <h2>Progress</h2>
     <div id="progress-container">
       <div id="progress-bar">0%</div>
@@ -112,6 +112,7 @@
       let autoplayTimer = null;
       let countdownInterval = null;
       let loadedPlaylist = [];
+      let saveNameEl = document.getElementById("playlistName");
 
       function getDisplayName(song) {
         return song.endsWith(".mp3") ? song.slice(0, -4) : song;
@@ -119,6 +120,7 @@
 
       document.getElementById("runScript").addEventListener("click", function () {
         const playlistUrl = document.getElementById("playlistUrl").value;
+        const savePlaylistName = saveNameEl.value;
         if (!playlistUrl) {
           alert("Please enter a YouTube playlist URL.");
           return;
@@ -126,25 +128,12 @@
         fetch("/run-script", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ playlist_url: playlistUrl }),
+          body: JSON.stringify({ playlist_url: playlistUrl, playlist_name: savePlaylistName }),
         })
           .then((response) => response.json())
           .then((data) => {
             alert(data.message || data.error);
             loadPlaylistsList();
-          })
-          .catch((error) => console.error("Error:", error));
-      });
-
-      document.getElementById("clearSongs").addEventListener("click", function () {
-        fetch("/clear-songs", { method: "POST" })
-          .then((response) => response.json())
-          .then((data) => {
-            alert(data.message || data.error);
-            playedSongsOrder = [];
-            localStorage.removeItem("playedSongs");
-            updateSongListUI();
-            updatePlayedSongsUI();
           })
           .catch((error) => console.error("Error:", error));
       });

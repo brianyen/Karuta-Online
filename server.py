@@ -29,11 +29,12 @@ def run_script():
   try:
     data = request.json
     playlist_url = data.get("playlist_url")
+    playlist_name = data.get("playlist_name")
 
     if not playlist_url:
       return jsonify({"error": "No playlist URL provided"}), 400
 
-    subprocess.Popen(["python", "main.py", playlist_url])
+    subprocess.Popen(["python", "main.py", playlist_url, playlist_name])
     return jsonify({"message": "Script started successfully!"})
   except Exception as e:
     return jsonify({"error": str(e)}), 500

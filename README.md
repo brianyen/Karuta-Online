@@ -21,3 +21,5 @@ python3 server.py
 ```
 
 Open link shown in terminal
+
+Note: if yt-dlp is bugging you about a JS runtime when you try downloading, try following the steps here: `https://github.com/yt-dlp/yt-dlp/wiki/EJS`
