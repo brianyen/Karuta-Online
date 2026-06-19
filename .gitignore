@@ -12,6 +12,9 @@ playlists/*
 custom/*
 images/*
 stored-songs/*
+__pycache__/
+node_modules/
 
-*temp
+*.tmp
 *~
+temp/
