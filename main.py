@@ -21,7 +21,7 @@ def playlistToJson(playlist_url, output_file="playlist_videos.json"):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(playlist_url, download=False)
         if "entries" in info:
-            video_urls = [entry["url"] for entry in info["entries"] if "url" in entry]
+            video_urls = {"id": info["id"], "urls": [entry["url"] for entry in info["entries"] if "url" in entry]}
             with open(output_file, "w") as f:
                 json.dump(video_urls, f, indent=2)
             print(f"Extracted {len(video_urls)} video URLs. Saved to {output_file}")
@@ -44,11 +44,11 @@ def normalize_volume(mp3_file):
     ], check=True)
     os.replace(normalized_file, mp3_file)
 
-def linkToAudioFile(link, downloaded_songs):
+def linkToAudioFile(link, downloaded_songs, id):
     global done
     ydl_opts = {
         'format': 'bestaudio/best',
-        'outtmpl': './songs/%(title)s.%(ext)s',
+        'outtmpl': f'./stored-songs/{id}/%(title)s.%(ext)s',
         'quiet': True,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
@@ -74,12 +74,14 @@ def threadStarting(json_file):
     global total
     downloaded_songs = []
     with open(json_file, "r") as f:
-        video_urls = json.load(f)
+        json_data = json.load(f)
+    id = json_data["id"]
+    video_urls = json_data["urls"]
     total = len(video_urls)
     update_progress()
     threads = []
     for url in video_urls:
-        thread = threading.Thread(target=linkToAudioFile, args=(url, downloaded_songs))
+        thread = threading.Thread(target=linkToAudioFile, args=(url, downloaded_songs, id))
         thread.start()
         threads.append(thread)
     for thread in threads:
@@ -88,7 +90,7 @@ def threadStarting(json_file):
     if not os.path.exists("playlists"):
         os.makedirs("playlists")
     timestamp = int(time.time())
-    playlist_filename = f"playlists/playlist_{timestamp}.json"
+    playlist_filename = f"playlists/{id}.json"
     with open(playlist_filename, "w") as f:
         json.dump(downloaded_songs, f, indent=2)
     print(f"Downloaded songs list saved to {playlist_filename}")
