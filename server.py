@@ -1,16 +1,45 @@
 from flask import Flask, jsonify, request, send_file, render_template, send_from_directory
+from flask_socketio import SocketIO, join_room
 import subprocess
 import os
 import json
 import random
 import base64
+import string
+from enum import Enum
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'password'
+
+socketio = SocketIO(app, async_mode='gevent')
 
 SONGS_FOLDER = "stored-songs"
 PROGRESS_FILE = "progress.json"
 MAPPING_FOLDER = "custom"
 IMAGE_FOLDER = "images"
+LETTERS = string.ascii_letters
+
+room_dict = {
+  "rooms": {},
+  "players": {}
+}
+
+class RoomState(Enum):
+  LOBBY = 1
+
+class PlayerState(Enum):
+  CONNECT = 1
+  DISCONNECT = 2
+
+@socketio.on('connect')
+def handle_connect():
+  print("User successfully connected.")
+
+@socketio.on('join_game')
+def join_game(data):
+  room = data.get('room')
+  join_room(room)
+  print(f"User joined room {room}")
 
 @app.route('/')
 def home():
@@ -20,31 +49,41 @@ def home():
 def practice():
   return render_template("practice.html")
 
-@app.route('/edit-deck')
-def edit_deck():
-  return render_template("edit.html")
+@app.route('/multiplayer')
+def multiplayer():
+  room_code = request.args.get("room")
+  if room_code in room_dict["rooms"] and len(room_dict["rooms"][room_code]["player_info"]) <= 2: # more later
+    return render_template("multiplayer.html", room=room_code)
+  return jsonify({"error": "Room invalid"}), 500
 
-@app.route('/run-script', methods=['POST'])
-def run_script():
+@app.route('/create-room-rq')
+def create_room():
+  code = ''.join(random.choices(LETTERS, k=4)).upper()
+  while (code in room_dict['rooms']):
+    code = ''.join(random.choices(LETTERS, k=4)).upper()
+  room_dict['rooms'][code] = {
+    "player_info": [],
+    "status": RoomState.LOBBY,
+    "disconnect_timer": None
+  }
+  return jsonify({ "url": f"/multiplayer?room={code}"})
+
+@app.route('/join-room-rq', methods=['POST'])
+def join_room():
   try:
     data = request.json
-    playlist_url = data.get("playlist_url")
-    playlist_name = data.get("playlist_name")
+    room_code = data.get("room_code")
 
-    if not playlist_url:
-      return jsonify({"error": "No playlist URL provided"}), 400
+    if room_code not in room_dict["rooms"]:
+      return jsonify({"url": ""})
+    if len(room_dict["rooms"][room_code]["player_info"]) >= 2:
+      return jsonify({"url": ""})
+    
+    return jsonify({"url": f"/multiplayer?room={room_code}"})
 
-    subprocess.Popen(["python", "main.py", playlist_url, playlist_name])
-    return jsonify({"message": "Script started successfully!"})
   except Exception as e:
+    print(e)
     return jsonify({"error": str(e)}), 500
-
-@app.route('/progress', methods=['GET'])
-def get_progress():
-  if os.path.exists(PROGRESS_FILE):
-    with open(PROGRESS_FILE, "r") as f:
-      return jsonify(json.load(f))
-  return jsonify({"done": 0, "total": 0})
 
 @app.route('/stored-songs/<deckname>/<filename>')
 def serve_audio_deck(deckname, filename):
@@ -69,25 +108,6 @@ def load_playlist():
     songs = json.load(f)
   return jsonify({"songs": songs})
 
-@app.route('/write-mapping', methods=['POST'])
-def write_custom_mapping():
-  try:
-    data = request.json
-    filename = data.get("filename")
-    mapping = data.get("mapping")
-
-    print("filename", filename)
-    print("mapping", mapping)
-
-    if not os.path.isdir(MAPPING_FOLDER):
-      os.mkdir(MAPPING_FOLDER)
-    with open(os.path.join(MAPPING_FOLDER, filename), "w") as f:
-      f.write(json.dumps(mapping, indent=4))
-    return jsonify({"message": "Mapping saved successfully!"})
-  except Exception as e:
-    print("Error saving mapping", e)
-    return jsonify({"error": str(e)}), 500
-   
 @app.route('/get-mapping', methods=['GET'])
 def get_custom_mapping():
   filename = request.args.get("filename")
@@ -97,36 +117,6 @@ def get_custom_mapping():
     with open(path, "r") as f:
       return json.load(f)
   return jsonify({"error": "Custom mapping not found"})
-
-@app.route('/write-images', methods=['POST'])
-def write_custom_images():
-  try:
-    data = request.json
-    filename = data.get("filename")
-    image_list = data.get("imageList")
-    path = os.path.join(IMAGE_FOLDER, filename)
-
-    if not os.path.isdir(IMAGE_FOLDER):
-      os.mkdir(IMAGE_FOLDER)
-    if not os.path.isdir(path):
-      os.mkdir(path)
-    for file in os.listdir(path):
-      file_path = os.path.join(path, file)
-      if os.path.isfile(file_path):
-        os.remove(file_path)
-    for obj in image_list:
-      if obj["image"]:
-        header, encoded = obj["image"].split(',', 1)
-        file_ext = header.split('/')[1].split(';')[0]
-        file_name = f"{obj["id"]}.{file_ext}"
-        file_path = os.path.join(path, file_name)
-        img_bytes = base64.b64decode(encoded)
-        with open(file_path, "wb") as f:
-          f.write(img_bytes)
-    
-    return jsonify({"message": "Images saved successfully"})
-  except Exception as e:
-    return jsonify({"error", str(e)}), 500
 
 @app.route('/get-images', methods=['GET'])
 def get_custom_images():
@@ -150,5 +140,5 @@ def get_custom_images():
     return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-  app.run(debug=True)
+  socketio.run(app, debug=True)
 

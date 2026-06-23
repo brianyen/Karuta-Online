@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Karuta Practice</title>
+    <title>Karuta Room</title>
     <style>
       #game-space {
         border: 1px solid black;
@@ -107,7 +107,7 @@
     </style>
   </head>
   <body>
-    <h1>Karuta Practice</h1>
+    <h1>Karuta Room Code: {{ room }}</h1>
     <a href="/"><div id="go-home" class="navigation">Home</div></a>
     <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
     <h2>Downloaded Playlists</h2>
@@ -157,6 +157,9 @@
     <div id="card-stats"></div>
 
     <script>
+      let params = new URLSearchParams(document.location.search);
+      let room = params.get("room"); // is the string "Jonathan"
+
       let cardstatsEl = document.getElementById("card-stats");
       let autoplaySliderEl = document.getElementById("autoplaySlider");
       let countdownEl = document.getElementById("countdown");

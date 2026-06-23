@@ -5,19 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Karuta Player</title>
     <style>
-      #progress-container {
-        width: 100%;
-        background-color: #ddd;
-        height: 25px;
-        margin-top: 10px;
-      }
-      #progress-bar {
-        width: 0%;
-        height: 100%;
-        background-color: green;
-        text-align: center;
-        color: white;
-      }
       #go-home {
         position: absolute;
         right: 100px;
@@ -36,21 +23,6 @@
           top: 30px;
           padding: 5px;
       }
-      ul {
-        list-style-type: none;
-        padding: 0;
-      }
-      li {
-        cursor: pointer;
-        padding: 5px;
-        border-bottom: 1px solid #ccc;
-      }
-      li.played {
-        background-color: gray;
-      }
-      li:hover {
-        background-color: #f0f0f0;
-      }
       .navigation:hover {
         background-color: lightblue;
         cursor: default;
@@ -64,306 +36,70 @@
     </style>
   </head>
   <body>
-    <h1>Karuta Player</h1>
+    <h1>Karuta (grahic design is my passion)</h1>
     <a href="/"><div id="go-home" class="navigation">Home</div></a>
     <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
-    <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
-    <input type="text" id="playlistUrl" placeholder="Enter YouTube playlist URL"/>
-    <button id="runScript">Download & Convert Playlist</button>
-    <input type="text" id="playlistName" placeholder="Enter playlist name"/>
-    <h2>Progress</h2>
-    <div id="progress-container">
-      <div id="progress-bar">0%</div>
-    </div>
-    <h2>Downloaded Playlists</h2>
-    <select id="playlistSelect" class="resize" multiple></select>
-    <button id="loadPlaylist">Load Playlist</button>
-    <h2>Now Playing:</h2>
-    <p id="currentSong">None</p>
-    <audio id="audioPlayer" controls></audio>
-    <button id="playRandom">Play Random Song</button>
-    <button id="resetPlayed">Reset Played Songs</button>
-    <h2>Autoplay Settings</h2>
-    <label for="autoplaySlider">Play Duration (seconds): </label>
-    <input type="range" id="autoplaySlider" min="0" max="60" value="30"/>
-    <span id="sliderValue">30</span> seconds
-    <br/>
-    <label for="autoplaySwitch">Autoplay: </label>
-    <input type="checkbox" id="autoplaySwitch"/>
-    <button id="playNext">Play Next Song</button>
-    <p>
-      Countdown:
-      <span id="countdown">0</span> seconds
-    </p>
-    <h2>Song Counters</h2>
-    <p>
-      Total Songs: <span id="totalSongs">0</span> | Songs Left:
-      <span id="songsLeft">0</span>
-    </p>
-
-    <h2>Loaded Playlist Songs (Unplayed)</h2>
-    <ul id="song-list"></ul>
-    <h2>Played Songs from Loaded Playlist</h2>
-    <ul id="played-song-list"></ul>
-
+    <button id="create-room" onclick="sendCreateRequest()">Create a Room</button>
+    <br>
+    <input type="text" id="room-code-input" placeholder="Enter a Room Code"/>
+    <button id="join-room" onclick="sendJoinRequest()">Join a Room</button>
     <script>
-      let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
-      let reverseMap = JSON.parse(localStorage.getItem("reverseMap") || "{}");
-      let autoplayTimer = null;
-      let countdownInterval = null;
-      let loadedPlaylist = [];
-      let saveNameEl = document.getElementById("playlistName");
+      let roomCodeEl = document.getElementById("room-code-input");
 
-      function getDisplayName(song) {
-        return song.endsWith(".mp3") ? song.slice(0, -4) : song;
+      roomCodeEl.addEventListener("input", (event) => {
+        event.target.value = event.target.value.toUpperCase();
+      })
+
+      function sendCreateRequest() {
+        fetch("/create-room-rq")
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json()
+        })
+        .then(data => {
+          const regexTest = /^\/multiplayer\?room=[A-Z]{4}$/
+          if (!regexTest.test(data.url)) {
+            throw new Error('Returned URL not ok');
+          }
+          window.location.href = data.url;
+        })
+        .catch((error) => console.error("Error:", error));
       }
 
-      document.getElementById("runScript").addEventListener("click", function () {
-        const playlistUrl = document.getElementById("playlistUrl").value;
-        const savePlaylistName = saveNameEl.value;
-        if (!playlistUrl) {
-          alert("Please enter a YouTube playlist URL.");
+      function sendJoinRequest() {
+        let code = roomCodeEl.value
+        const regexTest = /^[A-Z]+$/;
+        if (code.length != 4 || !regexTest.test(code)) {
+          alert("Please enter a valid code.");
           return;
         }
-        fetch("/run-script", {
+
+        fetch("/join-room-rq", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ playlist_url: playlistUrl, playlist_name: savePlaylistName }),
+          body: JSON.stringify({ room_code: code })
         })
-          .then((response) => response.json())
-          .then((data) => {
-            alert(data.message || data.error);
-            loadPlaylistsList();
-          })
-          .catch((error) => console.error("Error:", error));
-      });
-
-      function updateProgress() {
-        fetch("/progress")
-          .then((response) => response.json())
-          .then((data) => {
-            let percentage = data.total > 0 ? (data.done / data.total) * 100 : 0;
-            document.getElementById("progress-bar").style.width = percentage + "%";
-            document.getElementById("progress-bar").innerText = Math.round(percentage) + "%";
-            if (data.done === data.total && data.total > 0) {
-              updateSongListUI();
-              updatePlayedSongsUI();
-            }
-          })
-          .catch((error) => console.error("Error:", error));
-      }
-
-      function updateSongListUI() {
-        let songList = document.getElementById("song-list");
-        songList.innerHTML = "";
-        if (!loadedPlaylist || loadedPlaylist.length === 0) {
-          songList.innerHTML = "<li>No playlist loaded.</li>";
-          document.getElementById("totalSongs").innerText = "0";
-          document.getElementById("songsLeft").innerText = "0";
-          return;
-        }
-        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
-        document.getElementById("totalSongs").innerText = loadedPlaylist.length;
-        document.getElementById("songsLeft").innerText = unplayedSongs.length;
-        unplayedSongs.forEach((song) => {
-          let li = document.createElement("li");
-          li.textContent = getDisplayName(song);
-          li.onclick = function () {
-            cancelAutoplayTimer();
-            playSong(song);
-          };
-          songList.appendChild(li);
-        });
-      }
-
-      function updatePlayedSongsUI() {
-        let playedList = document.getElementById("played-song-list");
-        playedList.innerHTML = "";
-        if (!loadedPlaylist || loadedPlaylist.length === 0) return;
-        const playedSongs = playedSongsOrder.filter((song) => loadedPlaylist.includes(song));
-        playedSongs.forEach((song) => {
-          let li = document.createElement("li");
-          li.textContent = getDisplayName(song);
-          li.classList.add("played");
-          li.onclick = function () {
-            cancelAutoplayTimer();
-            playSong(song);
-          };
-          playedList.appendChild(li);
-        });
-      }
-
-      function startAutoplayTimer() {
-        let duration = parseInt(document.getElementById("autoplaySlider").value, 10);
-        let secondsLeft = duration;
-        document.getElementById("countdown").innerText = secondsLeft;
-        countdownInterval = setInterval(() => {
-          secondsLeft--;
-          if (secondsLeft <= 0) {
-            clearInterval(countdownInterval);
-            countdownInterval = null;
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
           }
-          document.getElementById("countdown").innerText = secondsLeft;
-        }, 1000);
-        autoplayTimer = setTimeout(() => {
-          cancelAutoplayTimer();
-          playNextSong();
-        }, duration * 1000);
-      }
-
-      function cancelAutoplayTimer() {
-        if (autoplayTimer !== null) {
-          clearTimeout(autoplayTimer);
-          autoplayTimer = null;
-        }
-        if (countdownInterval !== null) {
-          clearInterval(countdownInterval);
-          countdownInterval = null;
-        }
-        document.getElementById("countdown").innerText = "0";
-      }
-
-      function playNextSong() {
-        if (!loadedPlaylist || loadedPlaylist.length === 0) {
-          alert("No playlist loaded.");
-          return;
-        }
-        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
-        if (unplayedSongs.length === 0) {
-          alert("No unplayed songs available. Reset played songs to choose again.");
-          return;
-        }
-        let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
-        playSong(randomSong);
-      }
-
-      function playSong(song) {
-        cancelAutoplayTimer();
-        let deckname = reverseMap[song];
-        let audioPlayer = document.getElementById("audioPlayer");
-        let audioSource = "stored-songs/" + deckname + "/" + encodeURIComponent(song);
-        audioPlayer.src = audioSource;
-        audioPlayer.load();
-
-        function attemptPlayback() {
-          audioPlayer.play().catch((error) => {
-            console.warn("Playback failed (promise rejection), retrying...", error);
-            setTimeout(attemptPlayback, 500);
-          });
-        }
-
-        function onCanPlayThrough() {
-          audioPlayer.removeEventListener("canplaythrough", onCanPlayThrough);
-          const autoplaySlider = document.getElementById("autoplaySlider");
-          autoplaySlider.min = 0;
-          autoplaySlider.max = Math.floor(audioPlayer.duration);
-          if (parseInt(autoplaySlider.value, 10) > audioPlayer.duration) {
-            autoplaySlider.value = Math.floor(audioPlayer.duration / 2);
+          return response.json()
+        })
+        .then(data => {
+          if (data.url == undefined || data.url === "") {
+            alert("The room you are trying to enter is full or invalid");
+            return;
           }
-          document.getElementById("sliderValue").innerText = autoplaySlider.value;
-          let halfDuration = audioPlayer.duration / 2;
-          let randomStart = Math.random() * halfDuration;
-          audioPlayer.currentTime = randomStart;
-
-          attemptPlayback();
-          
-          audioPlayer.onerror = function () {
-            console.warn("Audio error event fired, retrying playback...");
-            setTimeout(attemptPlayback, 500);
-          };
-          if (document.getElementById("autoplaySwitch").checked) {
-            startAutoplayTimer();
+          const regexTest = /^\/multiplayer\?room=[A-Z]{4}$/
+          if (!regexTest.test(data.url)) {
+            throw new Error('Returned URL not ok');
           }
-        }
-        audioPlayer.addEventListener("canplaythrough", onCanPlayThrough);
-
-        document.getElementById("currentSong").innerText = getDisplayName(song) + " (from " + deckname + ")";
-        const index = playedSongsOrder.indexOf(song);
-        if (index !== -1) {
-          playedSongsOrder.splice(index, 1);
-        }
-        playedSongsOrder.unshift(song);
-        localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
-        updateSongListUI();
-        updatePlayedSongsUI();
+          window.location.href = data.url;
+        })
+        .catch((error) => console.error("Error:", error));
       }
-
-      document.getElementById("playRandom").addEventListener("click", function () {
-        cancelAutoplayTimer();
-        if (!loadedPlaylist || loadedPlaylist.length === 0) {
-          alert("No playlist loaded.");
-          return;
-        }
-        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
-        if (unplayedSongs.length === 0) {
-          alert("No unplayed songs available. Reset played songs to choose again.");
-          return;
-        }
-        let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
-        playSong(randomSong);
-      });
-
-      document.getElementById("resetPlayed").addEventListener("click", function () {
-        playedSongsOrder = [];
-        localStorage.removeItem("playedSongs");
-        updateSongListUI();
-        updatePlayedSongsUI();
-      });
-
-      document.getElementById("playNext").addEventListener("click", function () {
-        cancelAutoplayTimer();
-        playNextSong();
-      });
-
-      document.getElementById("autoplaySlider").addEventListener("input", function () {
-        document.getElementById("sliderValue").innerText = this.value;
-      });
-
-      setInterval(updateProgress, 2000);
-
-      function loadPlaylistsList() {
-        fetch("/get-playlists")
-          .then((response) => response.json())
-          .then((data) => {
-            let select = document.getElementById("playlistSelect");
-            select.innerHTML = "";
-            data.playlists.forEach((filename) => {
-              let option = document.createElement("option");
-              option.value = filename;
-              option.textContent = filename;
-              select.appendChild(option);
-            });
-          })
-          .catch((error) => console.error("Error:", error));
-      }
-
-      document.getElementById("loadPlaylist").addEventListener("click", function () {
-        let select = document.getElementById("playlistSelect");
-        let selectedDecks = Array.from(select.selectedOptions).map(o => o.value);
-        if (selectedDecks.length == 0) {
-          alert("No playlist selected.");
-          return;
-        }
-        loadedPlaylist = [];
-        reverseMap = {};
-        selectedDecks.forEach(filename => {
-          let deckname = filename.substring(0, filename.length - 5);
-          fetch(`/load-playlist?filename=${encodeURIComponent(filename)}`)
-            .then((response) => response.json())
-            .then((data) => {
-              loadedPlaylist = [...loadedPlaylist, ...data.songs];
-              data.songs.forEach(s => reverseMap[s] = deckname);
-              playedSongsOrder = playedSongsOrder.filter((song) => loadedPlaylist.includes(song));
-              localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
-              localStorage.setItem("reverseMap", JSON.stringify(reverseMap));
-              updateSongListUI();
-              updatePlayedSongsUI();
-            })
-            .catch((error) => console.error("Error:", error));
-        });
-      });
-
-      loadPlaylistsList();
     </script>
   </body>
 </html>

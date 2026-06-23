@@ -14,10 +14,6 @@ MAX_THREADS = 50
 sema = threading.Semaphore(MAX_THREADS)
 progress_lock = threading.Lock()
 
-def update_progress():
-    with open(PROGRESS_FILE, "w") as f:
-        json.dump({"done": done, "total": total}, f)
-
 def playlistToJson(playlist_url, playlist_name, output_file="playlist_videos.json"):
     ydl_opts = {
         'quiet': True, 
