@@ -57,6 +57,10 @@
         color: black;
         text-decoration: none;
       }
+      .resize {
+        resize: both;
+        overflow: auto;
+      }
     </style>
   </head>
   <body>
@@ -66,13 +70,13 @@
     <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
     <input type="text" id="playlistUrl" placeholder="Enter YouTube playlist URL"/>
     <button id="runScript">Download & Convert Playlist</button>
-    <button id="clearSongs">Clear Songs Folder</button>
+    <input type="text" id="playlistName" placeholder="Enter playlist name"/>
     <h2>Progress</h2>
     <div id="progress-container">
       <div id="progress-bar">0%</div>
     </div>
     <h2>Downloaded Playlists</h2>
-    <select id="playlistSelect"></select>
+    <select id="playlistSelect" class="resize" multiple></select>
     <button id="loadPlaylist">Load Playlist</button>
     <h2>Now Playing:</h2>
     <p id="currentSong">None</p>
@@ -104,9 +108,11 @@
 
     <script>
       let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
+      let reverseMap = JSON.parse(localStorage.getItem("reverseMap") || "{}");
       let autoplayTimer = null;
       let countdownInterval = null;
       let loadedPlaylist = [];
+      let saveNameEl = document.getElementById("playlistName");
 
       function getDisplayName(song) {
         return song.endsWith(".mp3") ? song.slice(0, -4) : song;
@@ -114,6 +120,7 @@
 
       document.getElementById("runScript").addEventListener("click", function () {
         const playlistUrl = document.getElementById("playlistUrl").value;
+        const savePlaylistName = saveNameEl.value;
         if (!playlistUrl) {
           alert("Please enter a YouTube playlist URL.");
           return;
@@ -121,25 +128,12 @@
         fetch("/run-script", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ playlist_url: playlistUrl }),
+          body: JSON.stringify({ playlist_url: playlistUrl, playlist_name: savePlaylistName }),
         })
           .then((response) => response.json())
           .then((data) => {
             alert(data.message || data.error);
             loadPlaylistsList();
-          })
-          .catch((error) => console.error("Error:", error));
-      });
-
-      document.getElementById("clearSongs").addEventListener("click", function () {
-        fetch("/clear-songs", { method: "POST" })
-          .then((response) => response.json())
-          .then((data) => {
-            alert(data.message || data.error);
-            playedSongsOrder = [];
-            localStorage.removeItem("playedSongs");
-            updateSongListUI();
-            updatePlayedSongsUI();
           })
           .catch((error) => console.error("Error:", error));
       });
@@ -245,8 +239,9 @@
 
       function playSong(song) {
         cancelAutoplayTimer();
+        let deckname = reverseMap[song];
         let audioPlayer = document.getElementById("audioPlayer");
-        let audioSource = "songs/" + encodeURIComponent(song);
+        let audioSource = "stored-songs/" + deckname + "/" + encodeURIComponent(song);
         audioPlayer.src = audioSource;
         audioPlayer.load();
 
@@ -282,7 +277,7 @@
         }
         audioPlayer.addEventListener("canplaythrough", onCanPlayThrough);
 
-        document.getElementById("currentSong").innerText = getDisplayName(song);
+        document.getElementById("currentSong").innerText = getDisplayName(song) + " (from " + deckname + ")";
         const index = playedSongsOrder.indexOf(song);
         if (index !== -1) {
           playedSongsOrder.splice(index, 1);
@@ -344,22 +339,28 @@
 
       document.getElementById("loadPlaylist").addEventListener("click", function () {
         let select = document.getElementById("playlistSelect");
-        let filename = select.value;
-        if (!filename) {
+        let selectedDecks = Array.from(select.selectedOptions).map(o => o.value);
+        if (selectedDecks.length == 0) {
           alert("No playlist selected.");
           return;
         }
-        fetch(`/load-playlist?filename=${encodeURIComponent(filename)}`)
-          .then((response) => response.json())
-          .then((data) => {
-            loadedPlaylist = data.songs;
-            playedSongsOrder = playedSongsOrder.filter((song) => loadedPlaylist.includes(song));
-            localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
-            updateSongListUI();
-            updatePlayedSongsUI();
-            alert("Playlist loaded with " + loadedPlaylist.length + " songs.");
-          })
-          .catch((error) => console.error("Error:", error));
+        loadedPlaylist = [];
+        reverseMap = {};
+        selectedDecks.forEach(filename => {
+          let deckname = filename.substring(0, filename.length - 5);
+          fetch(`/load-playlist?filename=${encodeURIComponent(filename)}`)
+            .then((response) => response.json())
+            .then((data) => {
+              loadedPlaylist = [...loadedPlaylist, ...data.songs];
+              data.songs.forEach(s => reverseMap[s] = deckname);
+              playedSongsOrder = playedSongsOrder.filter((song) => loadedPlaylist.includes(song));
+              localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
+              localStorage.setItem("reverseMap", JSON.stringify(reverseMap));
+              updateSongListUI();
+              updatePlayedSongsUI();
+            })
+            .catch((error) => console.error("Error:", error));
+        });
       });
 
       loadPlaylistsList();

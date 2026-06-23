@@ -5,21 +5,35 @@ import os
 import sys
 import subprocess
 import time
+from yt_dlp.networking.impersonate import ImpersonateTarget
 
 total = 0
 done = 0
 PROGRESS_FILE = "progress.json"
+MAX_THREADS = 50
+sema = threading.Semaphore(MAX_THREADS)
+progress_lock = threading.Lock()
 
 def update_progress():
     with open(PROGRESS_FILE, "w") as f:
         json.dump({"done": done, "total": total}, f)
 
-def playlistToJson(playlist_url, output_file="playlist_videos.json"):
-    ydl_opts = {'quiet': True, 'extract_flat': True, 'force_generic_extractor': True}
+def playlistToJson(playlist_url, playlist_name, output_file="playlist_videos.json"):
+    ydl_opts = {
+        'quiet': True, 
+        'extract_flat': True, 
+        'force_generic_extractor': True, 
+        'rm_cachedir': True, 
+        'http_chunk_size': 1048576,
+        'impersonate': ImpersonateTarget.from_str('chrome')
+    }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(playlist_url, download=False)
         if "entries" in info:
-            video_urls = [entry["url"] for entry in info["entries"] if "url" in entry]
+            if playlist_name != "":
+                video_urls = {"id": playlist_name, "urls": [entry["url"] for entry in info["entries"] if "url" in entry]}
+            else:
+                video_urls = {"id": info["id"], "urls": [entry["url"] for entry in info["entries"] if "url" in entry]}
             with open(output_file, "w") as f:
                 json.dump(video_urls, f, indent=2)
             print(f"Extracted {len(video_urls)} video URLs. Saved to {output_file}")
@@ -42,40 +56,51 @@ def normalize_volume(mp3_file):
     ], check=True)
     os.replace(normalized_file, mp3_file)
 
-def linkToAudioFile(link, downloaded_songs):
+def linkToAudioFile(link, downloaded_songs, id):
     global done
     ydl_opts = {
         'format': 'bestaudio/best',
-        'outtmpl': './songs/%(title)s.%(ext)s',
+        'outtmpl': f'./stored-songs/{id}/%(title)s.%(ext)s',
         'quiet': True,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
+        'rm_cachedir': True, 
+        'http_chunk_size': 1048576,
+        'impersonate': ImpersonateTarget.from_str('chrome')
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(link, download=True)
-        # Prepare the filename and force .mp3 extension
-        filename = ydl.prepare_filename(info)
-        base, _ = os.path.splitext(filename)
-        mp3_file = base + ".mp3"
-    # Normalize volume after conversion
-    normalize_volume(mp3_file)
-    downloaded_songs.append(os.path.basename(mp3_file))
-    done += 1
-    update_progress()
+    with sema:
+        print(f"================ ABOUT TO TRY DOWNLOADING LINK: {link}")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(link, download=True)
+            # Prepare the filename and force .mp3 extension
+            filename = ydl.prepare_filename(info)
+            base, _ = os.path.splitext(filename)
+            mp3_file = base + ".mp3"
+        # Normalize volume after conversion
+        normalize_volume(mp3_file)
+        downloaded_songs.append(os.path.basename(mp3_file))
+        with progress_lock:
+            done += 1
+            update_progress()
 
-def threadStarting(json_file):
+def threadStarting(json_file, playlist_name):
     global total
     downloaded_songs = []
     with open(json_file, "r") as f:
-        video_urls = json.load(f)
+        json_data = json.load(f)
+    if playlist_name != "":
+        id = playlist_name
+    else:
+        id = json_data["id"]
+    video_urls = json_data["urls"]
     total = len(video_urls)
     update_progress()
     threads = []
     for url in video_urls:
-        thread = threading.Thread(target=linkToAudioFile, args=(url, downloaded_songs))
+        thread = threading.Thread(target=linkToAudioFile, args=(url, downloaded_songs, id))
         thread.start()
         threads.append(thread)
     for thread in threads:
@@ -84,7 +109,7 @@ def threadStarting(json_file):
     if not os.path.exists("playlists"):
         os.makedirs("playlists")
     timestamp = int(time.time())
-    playlist_filename = f"playlists/playlist_{timestamp}.json"
+    playlist_filename = f"playlists/{id}.json"
     with open(playlist_filename, "w") as f:
         json.dump(downloaded_songs, f, indent=2)
     print(f"Downloaded songs list saved to {playlist_filename}")
@@ -94,5 +119,9 @@ if __name__ == "__main__":
         print("No playlist URL provided.")
         sys.exit(1)
     playlist_url = sys.argv[1]
-    playlistToJson(playlist_url)
-    threadStarting("playlist_videos.json")
+    playlist_name = sys.argv[2]
+    while os.path.exists(f"./stored-songs/{playlist_name}"):
+        playlist_name += "_copy"
+    print(f'PLAYLIST URL FOUND: ====== {playlist_url} ======')
+    playlistToJson(playlist_url, playlist_name)
+    threadStarting("playlist_videos.json", playlist_name)

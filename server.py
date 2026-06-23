@@ -7,7 +7,7 @@ import base64
 
 app = Flask(__name__)
 
-SONGS_FOLDER = "songs"
+SONGS_FOLDER = "stored-songs"
 PROGRESS_FILE = "progress.json"
 MAPPING_FOLDER = "custom"
 IMAGE_FOLDER = "images"
@@ -29,11 +29,12 @@ def run_script():
   try:
     data = request.json
     playlist_url = data.get("playlist_url")
+    playlist_name = data.get("playlist_name")
 
     if not playlist_url:
       return jsonify({"error": "No playlist URL provided"}), 400
 
-    subprocess.Popen(["python", "main.py", playlist_url])
+    subprocess.Popen(["python", "main.py", playlist_url, playlist_name])
     return jsonify({"message": "Script started successfully!"})
   except Exception as e:
     return jsonify({"error": str(e)}), 500
@@ -45,33 +46,9 @@ def get_progress():
       return jsonify(json.load(f))
   return jsonify({"done": 0, "total": 0})
 
-@app.route('/clear-songs', methods=['POST'])
-def clear_songs():
-  try:
-    files = [f for f in os.listdir(SONGS_FOLDER) if f.endswith('.mp3')]
-    for f in files:
-      os.remove(os.path.join(SONGS_FOLDER, f))
-    return jsonify({"message": "Songs folder cleared successfully!"})
-  except Exception as e:
-    return jsonify({"error": str(e)}), 500
-
-@app.route('/get-songs', methods=['GET'])
-def get_songs():
-  """Returns a list of available MP3 files."""
-  files = [f for f in os.listdir(SONGS_FOLDER) if f.endswith('.mp3')]
-  return jsonify({"songs": files})
-
-@app.route('/random-song', methods=['GET'])
-def random_song():
-  files = [f for f in os.listdir(SONGS_FOLDER) if f.endswith('.mp3')]
-  if files:
-    song = random.choice(files)
-    return jsonify({"song": song, "audio_file": f"/songs/{song}"})
-  return jsonify({"error": "No songs available"}), 404
-
-@app.route('/songs/<filename>')
-def serve_audio(filename):
-  return send_file(os.path.join(SONGS_FOLDER, filename))
+@app.route('/stored-songs/<deckname>/<filename>')
+def serve_audio_deck(deckname, filename):
+  return send_file(os.path.join(SONGS_FOLDER, deckname, filename))
 
 @app.route('/get-playlists', methods=['GET'])
 def get_playlists():

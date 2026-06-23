@@ -96,6 +96,7 @@
         overflow-y: hidden;
         text-align: center;
         font-size: 14px;
+        cursor: pointer;
       }
       .card-image {
         height: 67%;
@@ -125,7 +126,7 @@
     <a href="/edit-deck"><div id="go-edit" class="navigation">Edit</div></a>
     <input type="text" id="playlistUrl" placeholder="Enter YouTube playlist URL"/>
     <button id="runScript">Download & Convert Playlist</button>
-    <button id="clearSongs">Clear Songs Folder</button>
+    <input type="text" id="playlistName" placeholder="Enter playlist name"/>
     <h2>Progress</h2>
     <div id="progress-container">
       <div id="progress-bar">0%</div>
@@ -187,14 +188,17 @@
       let sliderValueEl = document.getElementById("sliderValue");
       let pauseSongEl = document.getElementById("pauseSong");
       let playRandomEl = document.getElementById("playRandom");
+      let playNextEl = document.getElementById("playNext");
       let playlistSelectEl = document.getElementById("playlistSelect");
       let customInputEl = document.getElementById("customInput");
       let gameSpaceEl = document.getElementById("game-space");
+      let saveNameEl = document.getElementById("playlistName");
 
       let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
       let autoplayTimer = null;
       let countdownInterval = null;
       let loadedPlaylist = [];
+      let deckname = "";
 
       let deckIsGenerated = false;
       let deckList = {};
@@ -207,13 +211,18 @@
       let stats = {}
 
       let correct = true;
+      let dragged = null;
 
       function getDisplayName(song) {
+        if (cardNameMapping[song] != undefined) {
+          return cardNameMapping[song];
+        }
         return song.endsWith(".mp3") ? song.slice(0, -4) : song;
       }
 
       document.getElementById("runScript").addEventListener("click", function () {
         const playlistUrl = document.getElementById("playlistUrl").value;
+        const savePlaylistName = saveNameEl.value;
         if (!playlistUrl) {
           alert("Please enter a YouTube playlist URL.");
           return;
@@ -221,25 +230,12 @@
         fetch("/run-script", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ playlist_url: playlistUrl }),
+          body: JSON.stringify({ playlist_url: playlistUrl, playlist_name: savePlaylistName }),
         })
           .then((response) => response.json())
           .then((data) => {
             alert(data.message || data.error);
             loadPlaylistsList();
-          })
-          .catch((error) => console.error("Error:", error));
-      });
-
-      document.getElementById("clearSongs").addEventListener("click", function () {
-        fetch("/clear-songs", { method: "POST" })
-          .then((response) => response.json())
-          .then((data) => {
-            alert(data.message || data.error);
-            playedSongsOrder = [];
-            localStorage.removeItem("playedSongs");
-            updateSongListUI();
-            updatePlayedSongsUI();
           })
           .catch((error) => console.error("Error:", error));
       });
@@ -367,6 +363,10 @@
           alert("No unplayed songs available. Reset played songs to choose again.");
           return;
         }
+        if (!deckIsGenerated) {
+          alert("Generate a deck first.");
+          return;
+        }
 
         await handlePreviousSong();
         
@@ -380,7 +380,8 @@
 
       function playSong(song) {
         cancelAutoplayTimer();
-        let audioSource = "songs/" + encodeURIComponent(song);
+        let audioSource;
+        audioSource = "stored-songs/" + deckname + "/" + encodeURIComponent(song);
         audioPlayerEl.src = audioSource;
         audioPlayerEl.load();
 
@@ -461,7 +462,7 @@
         await handlePreviousSong();
         
         let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
-        console.log("random song: " + randomSong);
+        //console.log("random song: " + randomSong);
 
         songStart = performance.now();
         correct = false;
@@ -469,7 +470,7 @@
         playSong(randomSong);
       });
 
-      document.getElementById("playNext").addEventListener("click", function () {
+      playNextEl.addEventListener("click", function () {
         cancelAutoplayTimer();
         playNextSong();
       });
@@ -524,6 +525,7 @@
 
       document.getElementById("loadPlaylist").addEventListener("click", function () {
         let filename = playlistSelectEl.value;
+        deckname = playlistSelectEl.value.substring(0, playlistSelectEl.value.length - 5);
         if (!filename) {
           alert("No playlist selected.");
           return;
@@ -623,7 +625,11 @@
           target.removeEventListener("click", handleSongChoice);
           target.innerHTML = "";
           target.style.borderColor = "white";
+          target.style.cursor = "auto";
+          target.id = "";
+          target.draggable = false;
           cardsLeft--;
+          console.log("CORRECT, CARDS LEFT:", cardsLeft)
 
           let timeForCard = Math.round(performance.now() - songStart); 
           deckList[chosenTitle]["timeTaken"] = timeForCard;
@@ -645,6 +651,9 @@
           stats["errors"] += 1;
           if (addNextCard().then((res) => res)) {
             cardsLeft++;
+            console.log("INCORRECT, CARDS LEFT:", cardsLeft)
+          } else {
+            console.log("INCORRECT, CARDS LEFT (OUT OF REPLACEMENTS):", cardsLeft)
           }
         }
 
@@ -661,6 +670,7 @@
               toReroll.innerHTML = "";
               toReroll.style.borderColor = "white";
               cardsLeft--;
+              console.log("FAILED REROLL, CARDS LEFT:", cardsLeft)
             }
             let timeForCard = Math.round(performance.now() - songStart); 
             deckList[playedSongsOrder[0]]["status"] = "rerolled";
@@ -671,6 +681,7 @@
             stats["rerolls"] += 1;
             updateCardStatsUI();
             updateStatsBox();
+            console.log("SUCCESSFUL REROLL, CARDS LEFT:", cardsLeft)
             return true;
           });
         }
@@ -707,27 +718,39 @@
           nextCardTitle = remainingCards[Math.floor(Math.random() * remainingCards.length)];
 
           if (toReplace === null) {
-            gameSpaceEl.appendChild(createCardElement(nextCardTitle));
+            let found = false;
+            for (const child of gameSpaceEl.children) {
+              if (child.id == "" || child.id == null) {
+                gameSpaceEl.replaceChild(createCardElement(nextCardTitle), child);
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              gameSpaceEl.appendChild(createCardElement(nextCardTitle));
+            }
             resolve(true);
           } else {
-            toReplace.style.borderColor = "red";
-            toReplace.style.borderWidth = "thick";
+            toReplace.style.outline = "4px solid red";
+            toReplace.style.outlineOffset = "-4px";
             playRandomEl.disabled = true;
+            playNextEl.disabled = true;
             correct = true;
             console.log(correct);
             setTimeout(() => {
               gameSpaceEl.replaceChild(createCardElement(nextCardTitle), toReplace);
               let next = document.getElementById(nextCardTitle);
-              next.style.borderColor = "red";
-              next.style.borderWidth = "thick";
+              toReplace.style.outline = "4px solid red";
+              toReplace.style.outlineOffset = "-4px";
               setTimeout(() => {
-                next.style.borderColor = "gray"; 
-                next.style.borderWidth = "inherit";
+                toReplace.style.outline = "";
+                toReplace.style.outlineOffset = "";
                 playRandomEl.disabled = false;
+                playNextEl.disabled = false;
                 correct = false;
                 resolve(true);
-              }, 1000);
-            }, 1000);
+              }, 1500);
+            }, 1500);
           }
         });
       }
@@ -744,10 +767,56 @@
         songCard.id = songTitle;
         cardImage.className = "card-image";
         cardText.className = "card-text";
+        cardImage.draggable = false;
+        songCard.draggable = true;
 
         let cardTitle = (cardNameMapping[songTitle] != undefined) ? cardNameMapping[songTitle] : songTitle;
 
         songCard.addEventListener("click", handleSongChoice);
+
+        songCard.addEventListener("dragenter", (event) => {
+          event.preventDefault()
+          if (correct && dragged != null) {
+            const draggedElementId = event.dataTransfer.getData("text/plain");
+            songCard.style.outline = "4px solid #6fb5cf";
+            songCard.style.outlineOffset = "-4px";
+          }
+        });
+
+        songCard.addEventListener("dragover", (event) => {
+          event.preventDefault();
+        })
+
+        songCard.addEventListener("dragleave", (event) => {
+          if (correct && dragged != null && !songCard.contains(event.relatedTarget)) {
+            songCard.style.outline = "";
+            songCard.style.outlineOffset = "";
+          }
+        });
+
+        songCard.addEventListener("dragstart", (event) => {
+          if (correct) {
+            dragged = event.target;
+          }
+        });
+
+        songCard.addEventListener("dragend", (event) => {
+          if (correct) {
+            dragged = null;
+          }
+        });
+
+        songCard.addEventListener("drop", (event) => {
+          if (correct && dragged != null) {
+            songCard.style.outline = "";
+            songCard.style.outlineOffset = "";
+
+            let dummy = createCardElement("");
+            gameSpaceEl.replaceChild(dummy, dragged);
+            gameSpaceEl.replaceChild(dragged, songCard);
+            gameSpaceEl.replaceChild(songCard, dummy);
+          }
+        });
 
         if (cardTitle.slice(-4) != ".mp3") {
           cardText.innerHTML = cardTitle;
