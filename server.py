@@ -1,12 +1,12 @@
-from flask import Flask, jsonify, request, send_file, render_template, send_from_directory
-from flask_socketio import SocketIO, join_room
+from flask import Flask, jsonify, request, send_file, render_template, send_from_directory, request
+from flask_socketio import SocketIO, join_room, emit
 import subprocess
 import os
 import json
 import random
 import base64
 import string
-from enum import Enum
+from dictionary_helpers import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'password'
@@ -21,15 +21,9 @@ LETTERS = string.ascii_letters
 
 room_dict = {
   "rooms": {},
-  "players": {}
+  "players": {},
+  "players_sid": {}
 }
-
-class RoomState(Enum):
-  LOBBY = 1
-
-class PlayerState(Enum):
-  CONNECT = 1
-  DISCONNECT = 2
 
 @socketio.on('connect')
 def handle_connect():
@@ -37,9 +31,78 @@ def handle_connect():
 
 @socketio.on('join_game')
 def join_game(data):
-  room = data.get('room')
-  join_room(room)
-  print(f"User joined room {room}")
+  try:
+    room_key = data.get('room')
+    player_id = data.get('player_id')
+    if room_key not in room_dict["rooms"]:
+      # ATTEMPTING TO JOIN A ROOM THAT DOES NOT EXIST
+      emit('room_missing', to=request.sid)
+      return
+    player_entry = room_dict["players"].get(player_id)
+    
+    if player_entry and room_key == player_entry["room_code"]:
+      # PLAYER EXISTS, REJOINING SAME ROOM 
+      join_room(room_key)
+      old_sid = player_entry["sid"] # update rev index then update player entry (new SID, status)
+      room_dict["players_sid"].pop(old_sid, None)
+      room_dict["players_sid"][request.sid] = player_id 
+      player_entry["sid"] = request.sid
+      player_entry["status"] = PlayerState.CONNECT
+
+      # stuff down here might not be needed. kept for debugging for now mostly
+      room_entry = room_dict["rooms"].get(room_key)
+      player_info = room_entry["player_info"]
+      if player_id not in player_info:
+        print("ATTENTION: player seems to be rejoining a room, but they're not in the room's player list")
+      if len(player_info) == 1:
+        print("ATTENTION: player rejoining and after rejoining, room has 1 person. room should have probably been deconstructed")
+      emit_room_status_switch(room_dict, room_key) 
+    elif player_id in room_dict["players"]:
+      # PLAYER EXISTS, MOVED ROOMS W/O DICT UPDATING (hopefully uncommon branch)
+      print("ATTENTION: player with same session joined prev room w/o dict being updated!")
+      old_sid = player_entry["sid"] # remove old entry in rev index
+      room_dict["players_sid"].pop(old_sid, None)
+      prev_room = player_entry["room_code"]
+
+      # if in old room, this player was the last one then handle appropriately
+      player_info = room_dict["rooms"][prev_room]["player_info"]
+      if player_id in player_info:
+        player_info.remove(player_id)
+      else:
+        print("ATTENTION: i think a player existed but not in the room the dict says they were....")
+      if len(player_info) == 1:
+        room_dict["rooms"][prev_room]["status"] = RoomState.GAME_FINISH
+        emit_room_status_switch(room_dict, prev_room)
+        
+      add_player_to_room(room_dict, player_id, room_key, request)
+    elif player_id not in room_dict["players"]:
+      # PLAYER DOES NOT EXIST
+      add_player_to_room(room_dict, player_id, room_key, request)
+  except Exception as e:
+    print(e)
+    emit('room_missing', to=request.sid)
+
+@socketio.on('leave_room')
+def leave_room(data):
+  player_id = data.get('player_id')
+  room_key = data.get('room')
+  try:
+    remove_player_from_room(room_dict, player_id, room_key)
+  except Exception as e:
+    print(e)
+
+@socketio.on('disconnect')
+def disconnect_room(data):
+  # some integrity checks, hopefully these won't be needed...
+  player_id = room_dict["players_sid"].get(request.sid)
+  if player_id == None or player_id not in room_dict["players"]:
+    print("ATTENTION: got disconnection message, but the player doesn't even exist in the first place")
+    return
+  
+  # set player status to disconnect --> set timer
+  player_entry = room_dict["players"].get(player_id)
+  player_entry["status"] = PlayerState.DISCONNECT
+  handle_disconnect_timer(socketio, room_dict, player_id, player_entry["room_code"])
 
 @app.route('/')
 def home():
@@ -52,7 +115,7 @@ def practice():
 @app.route('/multiplayer')
 def multiplayer():
   room_code = request.args.get("room")
-  if room_code in room_dict["rooms"] and len(room_dict["rooms"][room_code]["player_info"]) <= 2: # more later
+  if room_code in room_dict["rooms"]: # more later
     return render_template("multiplayer.html", room=room_code)
   return jsonify({"error": "Room invalid"}), 500
 
@@ -63,13 +126,12 @@ def create_room():
     code = ''.join(random.choices(LETTERS, k=4)).upper()
   room_dict['rooms'][code] = {
     "player_info": [],
-    "status": RoomState.LOBBY,
-    "disconnect_timer": None
+    "status": RoomState.LOBBY_1P
   }
   return jsonify({ "url": f"/multiplayer?room={code}"})
 
 @app.route('/join-room-rq', methods=['POST'])
-def join_room():
+def join_room_rq():
   try:
     data = request.json
     room_code = data.get("room_code")

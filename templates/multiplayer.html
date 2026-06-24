@@ -108,8 +108,8 @@
   </head>
   <body>
     <h1>Karuta Room Code: {{ room }}</h1>
-    <a href="/"><div id="go-home" class="navigation">Home</div></a>
-    <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
+    <a href="/" onclick="return confirmNavigation()"><div id="go-home" class="navigation">Home</div></a>
+    <a href="/practice" onclick="return confirmNavigation()"><div id="go-practice" class="navigation">Practice</div></a>
     <h2>Downloaded Playlists</h2>
     <select id="playlistSelect"></select>
     <button id="loadPlaylist">Load Playlist</button>
@@ -156,9 +156,35 @@
     <button id="toggleStatsVisibility">Hide Card Stats</button>
     <div id="card-stats"></div>
 
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
       let params = new URLSearchParams(document.location.search);
-      let room = params.get("room"); // is the string "Jonathan"
+      let room_key = params.get("room"); 
+
+      let playerID = sessionStorage.getItem("playerID") || crypto.randomUUID();
+      sessionStorage.setItem("playerID", playerID);
+      const socket = io();
+
+      socket.on('connect', () => {
+        console.log("Connection established");
+        socket.emit('join_game', { room: room_key, player_id: playerID })
+      });
+
+      socket.on('create_success_2p', () => {
+        console.log("(DEBUG): 2 players are now in the game")
+      })
+
+      socket.on('join_ack', () => {
+        alert("room join successful")
+      });
+
+      socket.on('room_missing', () => [
+        alert("attempted to join nonexistent or invalid room")
+      ])
+
+      socket.on('room_full', () => {
+        alert("issue while joining room, it may be full")
+      })
 
       let cardstatsEl = document.getElementById("card-stats");
       let autoplaySliderEl = document.getElementById("autoplaySlider");
@@ -797,6 +823,13 @@
             })
           }
         });
+      }
+
+      function confirmNavigation() {
+        if (confirm("Are you sure you want to leave the room?")) {
+          socket.emit('leave_room', { room: room_key, player_id: playerID });
+        }
+        return res
       }
 
       loadPlaylistsList();
