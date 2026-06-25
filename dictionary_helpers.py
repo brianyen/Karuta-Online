@@ -18,11 +18,12 @@ class PlayerState(Enum):
 
 def add_player_to_room(room_dict, player_id, room_code, request):
     player_info = room_dict["rooms"][room_code]["player_info"]
+    room_entry = room_dict["rooms"][room_code]
     if len(player_info) >= 2:
         emit('room_full', to=request.sid)
         return 1
     
-    room_dict["rooms"][room_code]["player_info"].append(player_id) # freshly add player to room and room entry
+    player_info.append(player_id) # freshly add player to room and room entry
     room_dict["players"][player_id] = {
         "sid": request.sid,
         "status": PlayerState.CONNECT,
@@ -31,9 +32,9 @@ def add_player_to_room(room_dict, player_id, room_code, request):
     room_dict["players_sid"][request.sid] = player_id
     join_room(room_code)
     if len(player_info) == 1: # temporary state stuff
-        room_dict["rooms"][room_code]["status"] = RoomState.LOBBY_1P
+        room_entry["status"] = RoomState.LOBBY_1P
     if len(player_info) == 2:
-        room_dict["rooms"][room_code]["status"] = RoomState.LOBBY_2P
+        room_entry["status"] = RoomState.LOBBY_2P
     emit_room_status_switch(room_dict, room_code)
 
 def remove_player_from_room(room_dict, player_id, room_code):
@@ -48,8 +49,6 @@ def remove_player_from_room(room_dict, player_id, room_code):
         emit_room_status_switch(room_dict, room_code)
     if (len(player_info)) == 0: # no players left, delete the room entry
         room_dict["rooms"].pop(room_code, None)
-    else:
-        print("ATTENTION: player left room but player somehow wasn't even in the room")
 
     # remove the player/rev index entries from dict
     sid = room_dict["players"][player_id]["sid"]
@@ -66,14 +65,15 @@ def handle_disconnect_timer(socketio, room_dict, player_id, room_code):
         remove_player_from_room(room_dict, player_id, room_code)
 
 def emit_room_status_switch(room_dict, room_code):
-    match room_dict["rooms"][room_code]["status"]:
+    room_entry = room_dict["rooms"][room_code]
+    match room_entry["status"]:
         case RoomState.LOBBY_1P:
-            emit('create_success_1p', to=room_code)
+            emit('create_success_1p', {"deck": room_entry["deck_name"], "songs": room_entry["available_songs"]}, to=room_code)
             return
         case RoomState.LOBBY_2P:
-            emit('create_success_2p', to=room_code)
+            emit('create_success_2p', {"deck": room_entry["deck_name"], "songs": room_entry["available_songs"]}, to=room_code)
             return
         case RoomState.GAME_ACTIVE:
-            emit('play_song', {}, to=room_code)
+            emit('play_song', {"deck": room_entry["deck_name"], "songs": room_entry["available_songs"]}, to=room_code)
         case RoomState.GAME_FINISH:
-            emit('game_finished', {}, to=room_code)
+            emit('game_finished', {"deck": room_entry["deck_name"], "songs": room_entry["available_songs"]}, to=room_code)

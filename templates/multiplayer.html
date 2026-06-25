@@ -108,6 +108,7 @@
   </head>
   <body>
     <h1>Karuta Room Code: {{ room }}</h1>
+    <h2 id="deckDisplay"></h2>
     <a href="/" onclick="return confirmNavigation()"><div id="go-home" class="navigation">Home</div></a>
     <a href="/practice" onclick="return confirmNavigation()"><div id="go-practice" class="navigation">Practice</div></a>
     <h2>Downloaded Playlists</h2>
@@ -160,6 +161,9 @@
     <script>
       let params = new URLSearchParams(document.location.search);
       let room_key = params.get("room"); 
+      let deckDisplayEl = document.getElementById("deckDisplay");
+      let deck;
+      let availableSongs = [];
 
       let playerID = sessionStorage.getItem("playerID") || crypto.randomUUID();
       sessionStorage.setItem("playerID", playerID);
@@ -170,12 +174,21 @@
         socket.emit('join_game', { room: room_key, player_id: playerID })
       });
 
-      socket.on('create_success_2p', () => {
-        console.log("(DEBUG): 2 players are now in the game")
-      })
+      socket.on('create_success_1p', (e) => {
+        deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
+        deckDisplayEl.innerHTML = "Deck: " + deck;
+      });
 
-      socket.on('join_ack', () => {
-        alert("room join successful")
+      socket.on('create_success_2p', (e) => {
+        deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
+        deckDisplayEl.innerHTML = "Deck: " + deck;
+        const arraysEqual = (a, b) => a.length === b.length && a.every((val, index) => val === b[index]);
+        if (!arraysEqual(e.songs, availableSongs)) {
+          availableSongs = e.songs;
+          availableSongs.forEach((song) => {
+            gameSpaceEl.appendChild(createCardElement(song));
+          })
+        }
       });
 
       socket.on('room_missing', () => [
@@ -201,7 +214,6 @@
       let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
       let autoplayTimer = null;
       let countdownInterval = null;
-      let loadedPlaylist = [];
       let deckname = "";
       let customInputString = "";
 
@@ -228,14 +240,14 @@
       function updateSongListUI() {
         let songList = document.getElementById("song-list");
         songList.innerHTML = "";
-        if (!loadedPlaylist || loadedPlaylist.length === 0) {
+        if (!availableSongs || availableSongs.length === 0) {
           songList.innerHTML = "<li>No playlist loaded.</li>";
           document.getElementById("totalSongs").innerText = "0";
           document.getElementById("songsLeft").innerText = "0";
           return;
         }
-        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
-        document.getElementById("totalSongs").innerText = loadedPlaylist.length;
+        const unplayedSongs = availableSongs.filter((song) => !playedSongsOrder.includes(song));
+        document.getElementById("totalSongs").innerText = availableSongs.length;
         document.getElementById("songsLeft").innerText = unplayedSongs.length;
         unplayedSongs.forEach((song) => {
           let li = document.createElement("li");
@@ -251,8 +263,8 @@
       function updatePlayedSongsUI() {
         let playedList = document.getElementById("played-song-list");
         playedList.innerHTML = "";
-        if (!loadedPlaylist || loadedPlaylist.length === 0) return;
-        const playedSongs = playedSongsOrder.filter((song) => loadedPlaylist.includes(song));
+        if (!availableSongs || availableSongs.length === 0) return;
+        const playedSongs = playedSongsOrder.filter((song) => availableSongs.includes(song));
         playedSongs.forEach((song) => {
           let li = document.createElement("li");
           li.textContent = getDisplayName(song);
@@ -323,11 +335,11 @@
       }
 
       async function playNextSong() {
-        if (!loadedPlaylist || loadedPlaylist.length === 0) {
+        if (!availableSongs || availableSongs.length === 0) {
           alert("No playlist loaded.");
           return;
         }
-        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
+        const unplayedSongs = availableSongs.filter((song) => !playedSongsOrder.includes(song));
         if (unplayedSongs.length === 0) {
           alert("No unplayed songs available. Reset played songs to choose again.");
           return;
@@ -414,11 +426,11 @@
 
       playRandomEl.addEventListener("click", async function () {
         cancelAutoplayTimer();
-        if (!loadedPlaylist || loadedPlaylist.length === 0) {
+        if (!availableSongs || availableSongs.length === 0) {
           alert("No playlist loaded.");
           return;
         }
-        const unplayedSongs = loadedPlaylist.filter((song) => !playedSongsOrder.includes(song));
+        const unplayedSongs = availableSongs.filter((song) => !playedSongsOrder.includes(song));
         if (unplayedSongs.length === 0) {
           alert("No unplayed songs available. Reset played songs to choose again.");
           return;
@@ -496,16 +508,16 @@
         fetch(`/load-playlist?filename=${encodeURIComponent(filename)}`)
           .then((response) => response.json())
           .then((data) => {
-            loadedPlaylist = data.songs;
-            playedSongsOrder = playedSongsOrder.filter((song) => loadedPlaylist.includes(song));
+            availableSongs = data.songs;
+            playedSongsOrder = playedSongsOrder.filter((song) => availableSongs.includes(song));
             localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
             updateSongListUI();
             updatePlayedSongsUI();
-            alert("Playlist loaded with " + loadedPlaylist.length + " songs.");
+            alert("Playlist loaded with " + availableSongs.length + " songs.");
 
             if (customInputString === "") {
               let customOut = "";
-              loadedPlaylist.forEach((v) => {
+              availableSongs.forEach((v) => {
                 customOut += `${v}\t${v}\n`
               })
               customInputString = customOut;
@@ -525,12 +537,12 @@
         updateSongListUI();
         updatePlayedSongsUI();
 
-        let deckLength = (loadedPlaylist.length > 80) ? 50 : Math.floor(loadedPlaylist.length / 4) * 2;
+        let deckLength = (availableSongs.length > 80) ? 50 : Math.floor(availableSongs.length / 4) * 2;
         if (deckLength == 0) {
           alert("Please load a deck first.");
           return;
         }
-        if (deckLength > loadedPlaylist.length) {
+        if (deckLength > availableSongs.length) {
           alert("Advancement: How did we get here? (debug)");
           return;
         }
@@ -548,7 +560,7 @@
         deckList = {}
         cardsLeft = deckLength;
 
-        let songsCopy = loadedPlaylist.slice();
+        let songsCopy = availableSongs.slice();
         let p1 = songsCopy.length;
         while (p1 != 0) {
           let p2 = Math.floor(Math.random() * p1);
@@ -668,7 +680,7 @@
       }
 
       function addNextCard(toReplace = null) {
-        let remainingCards = loadedPlaylist.filter((song) => {
+        let remainingCards = availableSongs.filter((song) => {
           return !playedSongsOrder.includes(song) && !Object.keys(deckList).includes(song);
         });
 

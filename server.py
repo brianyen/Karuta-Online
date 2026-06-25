@@ -119,16 +119,31 @@ def multiplayer():
     return render_template("multiplayer.html", room=room_code)
   return jsonify({"error": "Room invalid"}), 500
 
-@app.route('/create-room-rq')
+@app.route('/create-room-rq', methods=['POST'])
 def create_room():
-  code = ''.join(random.choices(LETTERS, k=4)).upper()
-  while (code in room_dict['rooms']):
+  try:
+    deck_name = request.json.get("deck")
     code = ''.join(random.choices(LETTERS, k=4)).upper()
-  room_dict['rooms'][code] = {
-    "player_info": [],
-    "status": RoomState.LOBBY_1P
-  }
-  return jsonify({ "url": f"/multiplayer?room={code}"})
+    while (code in room_dict['rooms']):
+      code = ''.join(random.choices(LETTERS, k=4)).upper()
+
+    filepath = os.path.join("playlists", deck_name)
+    all_songs = []
+    with open(filepath, "r") as f:
+      all_songs = json.load(f)
+    random.shuffle(all_songs)
+
+    room_dict['rooms'][code] = {
+      "player_info": [],
+      "status": RoomState.LOBBY_1P,
+      "deck_name": deck_name,
+      "available_songs": all_songs[:len(all_songs) // 2],
+      "unplayed_songs": all_songs[len(all_songs) // 2:]
+    }
+    return jsonify({ "url": f"/multiplayer?room={code}"})
+  except Exception as e:
+    print(e)
+    return jsonify({"error": str(e)}), 500
 
 @app.route('/join-room-rq', methods=['POST'])
 def join_room_rq():

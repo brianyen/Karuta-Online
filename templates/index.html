@@ -39,19 +39,26 @@
     <h1>Karuta (grahic design is my passion)</h1>
     <a href="/"><div id="go-home" class="navigation">Home</div></a>
     <a href="/practice"><div id="go-practice" class="navigation">Practice</div></a>
+    <select id="playlistSelect"></select>
     <button id="create-room" onclick="sendCreateRequest()">Create a Room</button>
     <br>
     <input type="text" id="room-code-input" placeholder="Enter a Room Code"/>
     <button id="join-room" onclick="sendJoinRequest()">Join a Room</button>
     <script>
       let roomCodeEl = document.getElementById("room-code-input");
+      let playlistSelectEl = document.getElementById("playlistSelect");
 
       roomCodeEl.addEventListener("input", (event) => {
         event.target.value = event.target.value.toUpperCase();
       })
 
       function sendCreateRequest() {
-        fetch("/create-room-rq")
+        let deckName = playlistSelectEl.value
+        fetch("/create-room-rq", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deck: deckName })
+        })
         .then(response => {
           if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -100,6 +107,23 @@
         })
         .catch((error) => console.error("Error:", error));
       }
+
+      function loadPlaylistsList() {
+        fetch("/get-playlists")
+          .then((response) => response.json())
+          .then((data) => {
+            playlistSelectEl.innerHTML = "";
+            data.playlists.forEach((filename) => {
+              let option = document.createElement("option");
+              option.value = filename;
+              option.textContent = filename;
+              playlistSelectEl.appendChild(option);
+            });
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      loadPlaylistsList();
     </script>
   </body>
 </html>
