@@ -14,14 +14,6 @@
         gap: 3px;
         grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
       }
-      #stats-box {
-        position: absolute;
-        right: 0%;
-        width: 30%;
-        bottom: -200px;
-        height: 180px;
-        border: 1px solid gray;
-      }
       #go-home {
         position: absolute;
         right: 100px;
@@ -34,45 +26,18 @@
         top: 30px;
         padding: 5px;
       }
-      #go-edit {
-          position: absolute;
-          right: 170px;
-          top: 30px;
-          padding: 5px;
+      #game-header {
+        display: flex;
       }
-      ul {
-        list-style-type: none;
-        padding: 0;
-      }
-      li {
-        cursor: pointer;
+      #game-header div {
+        border: 1px solid gray;
+        flex: 1;
         padding: 5px;
-        border-bottom: 1px solid #ccc;
-      }
-      li.played {
-        background-color: gray;
-      }
-      li.correct {
-        background-color: #8cb88c
-      }
-      li.rerolled {
-        background-color: #d57a64
-      }
-      li:hover {
-        background-color: #f0f0f0;
+        overflow-y: scroll;
+        height: 100px;
       }
       .right-align {
         float: right;
-      }
-      .customInput {
-        float: right;
-      }
-      #customInput {
-        width: 80%;
-        height: 400px;
-        display: none;
-        z-index: 1000;
-        resize: none;
       }
       .card {
         width: 110px;
@@ -111,59 +76,60 @@
     <h2 id="deckDisplay"></h2>
     <a href="/" onclick="return confirmNavigation()"><div id="go-home" class="navigation">Home</div></a>
     <a href="/practice" onclick="return confirmNavigation()"><div id="go-practice" class="navigation">Practice</div></a>
-    <h2>Downloaded Playlists</h2>
-    <select id="playlistSelect"></select>
-    <button id="loadPlaylist">Load Playlist</button>
-    <button id="generateDeck">Generate/Reset Deck</button>
-    <button class="customInput" id="loadCustom" onclick="loadCustom()">Load Mapping</button>
     <hr></hr>
-    <button id="pauseSong">Pause/Resume Current Song</button>
-    <button id="playRandom">Play Random Song</button>
-    <h2>Game</h2>
+    <div id="game-header">
+      <div id="readyDiv">
+        <button id="ready" onclick="toggleReady()">Ready for Next Song</button>
+        <input type="checkbox" id="readyCheckbox" onclick="return false;"/>
+      </div>
+      <div id="tapoutDiv" style="display: none">
+        <button id="tapout" onclick="tapOut()">Tap Out</button>
+      </div>
+      <div id="countdown"></div>
+      <div id="answer">Song Name:</div>
+      <div id="own-score">You:</div>
+      <div id="other-score">Opponent:</div>
+      <div id="notifications"></div>
+    </div>
+      <h2>Game</h2>
     <div id="game-space"></div>
-    <h2>Autoplay Settings</h2>
-    <label for="autoplaySlider">Play Duration (seconds): </label>
-    <input type="range" id="autoplaySlider" min="0" max="60" value="30"/>
-    <span id="sliderValue">30</span> seconds
-    <br/>
-    <label for="autoplaySwitch">Autoplay: </label>
-    <input type="checkbox" id="autoplaySwitch"/>
-    <button id="playNext">Play Next Song</button>
-    <p>
-      Countdown:
-      <span id="countdown">0</span> seconds
-    </p>
-    <h2>Song Counters</h2>
-    <p>
-      Total Songs: <span id="totalSongs">0</span> | Songs Left:
-      <span id="songsLeft">0</span>
-    </p>
-
-    <h2>Audio Player</h2>
-    <button id="toggleAudioPlayer">Hide Audio Player Visibility</button><br>
     <div id="audio">
-      <p id="currentSong">None</p>
-      <audio id="audioPlayer" controls></audio>
+      <audio id="audioPlayer" style="display: none" controls></audio>
     </div>
-    <h2>Played Songs from Loaded Playlist</h2>
-    <button id="togglePlaylistVisibility">Hide Playlist Visibility</button>
-    <div id="playlists">
-      <ul id="played-song-list"></ul>
-      <h2>Loaded Playlist Songs (Unplayed)</h2>
-      <ul id="song-list"></ul>
-    </div>
-    
-    <h2>Individual Card Stats</h2>
-    <button id="toggleStatsVisibility">Hide Card Stats</button>
-    <div id="card-stats"></div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
+
+      let audioPlayerEl = document.getElementById("audioPlayer");
+      let gameSpaceEl = document.getElementById("game-space");
+      let readyEl = document.getElementById("readyCheckbox");
+      let readyButtonEl = document.getElementById("ready");
+      let readyDivEl = document.getElementById("readyDiv");
+      let tapoutEl = document.getElementById("tapout")
+      let tapoutDivEl = document.getElementById("tapoutDiv")
+      let deckDisplayEl = document.getElementById("deckDisplay");
+
+      let countdownEl = document.getElementById("countdown");
+      let answerEl = document.getElementById("answer");
+      let ownScoreEl = document.getElementById("own-score");
+      let otherScoreEl = document.getElementById("other-score");
+      let notificationsEl = document.getElementById("notifications");
+
+      let images = {};
+
+      let correct = true;
+      let dragged = null;
+      let songStart = null;
+      let faulted = -1;
+
       let params = new URLSearchParams(document.location.search);
       let room_key = params.get("room"); 
-      let deckDisplayEl = document.getElementById("deckDisplay");
       let deck;
       let availableSongs = [];
+      let currentSong = "";
+
+      let ownScore = -1; // eventually replace with tracking full card decks i think
+      let otherScore = -1;
 
       let playerID = sessionStorage.getItem("playerID") || crypto.randomUUID();
       sessionStorage.setItem("playerID", playerID);
@@ -182,14 +148,120 @@
       socket.on('create_success_2p', (e) => {
         deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
         deckDisplayEl.innerHTML = "Deck: " + deck;
+        let count = 0
         const arraysEqual = (a, b) => a.length === b.length && a.every((val, index) => val === b[index]);
         if (!arraysEqual(e.songs, availableSongs)) {
           availableSongs = e.songs;
           availableSongs.forEach((song) => {
+            count++;
             gameSpaceEl.appendChild(createCardElement(song));
           })
         }
+        ownScore = Math.trunc(count / 2);
+        otherScore = Math.trunc(count / 2);
+        updateScores();
       });
+
+      socket.on('start_playing', (e) => {
+        // show a 3 2 1 countdown
+        readyButtonEl.disabled = true;
+        countdown.innerHTML = "Round Starting in 3..."
+
+        setTimeout(() => {
+          countdown.innerHTML = "Round Starting in 2..."
+        }, 1000)
+
+        setTimeout(() => {
+          countdown.innerHTML = "Round Starting in 1..."
+        }, 2000)
+
+        setTimeout(() => {
+          countdownEl.innerHTML = "Round Started"
+          currentSong = e.song;
+          playSong(currentSong, e.start_time)
+          readyDivEl.style.display = 'none';
+          readyEl.checked = false;
+          tapoutDivEl.style.display = 'block';
+          tapoutEl.disabled = false;
+          correct = false;
+          faulted = -1;
+          songStart = performance.now()
+          answerEl.innerHTML = "Now playing..."
+        }, 3000);
+      });
+
+      socket.on('round_results', (e) => {
+        let winner = e.winner;
+        let remove = e.remove;
+        let add = e.add;
+
+        let target = (remove === "") ? null : document.getElementById(remove);
+        let faultParams = { fault_status: faulted, player_id: playerID, room: room_key };
+
+        countdownEl.innerHTML = "Round is finished"
+        answerEl.innerHTML = "Song name: " + currentSong;
+
+        if (target != null) {
+          addNextCard(target, add, faultParams).then((res) => {
+            if (!res) {
+              target.removeEventListener("click", handleSongChoice);
+              target.innerHTML = "";
+              target.style.borderColor = "white";
+            }
+          });
+        } else {
+          socket.emit('fault_msg', faultParams);
+        }
+
+        if (winner === playerID) {
+          ownScore--;
+          updateLogs("RESULT: You won the card " + currentSong);
+        } else if (winner === "") {
+          if (remove != "" && add != "") {
+            updateLogs("REROLL: You rerolled " + currentSong + " into " + add);
+          } else if (remove != "") {
+            updateLogs("REROLL: You rerolled " + currentSong + " with no dead cards remaining");
+          } else {
+            updateLogs("DEAD CARD: " + currentSong);
+          }
+        } else {
+          otherScore--;
+          updateLogs("RESULT: Opponent won the card " + currentSong);
+        }
+
+        updateScores();
+
+        correct = true;
+        tapoutEl.disabled = true;
+
+        faulted = -1;
+      })
+
+      socket.on('fault_response', (e) => {
+        console.log("fault response handling")
+        Object.keys(e.args).forEach(key => {
+          if (key === playerID && e.args[key] == 1) { // needs to be card replacement later on
+            updateLogs("FAULT: You faulted when " + currentSong + " was playing.");
+            ownScore += 1;
+            otherScore -= 1;
+          } else if (e.args[key] == 1) {
+            updateLogs("FAULT: Opponent faulted when " + currentSong + " was playing.");
+            ownScore -= 1;
+            otherScore += 1;
+          }
+          updateScores();
+        })
+
+        tapoutDivEl.style.display = "none";
+        tapoutEl.disabled = false;
+        correct = true;
+        readyDivEl.style.display = "block";
+        readyButtonEl.disabled = false;
+      })
+
+      socket.on('game_finished', () => {
+        countdownEl.innerHTML = "Game is finished";
+      })
 
       socket.on('room_missing', () => [
         alert("attempted to join nonexistent or invalid room")
@@ -199,170 +271,9 @@
         alert("issue while joining room, it may be full")
       })
 
-      let cardstatsEl = document.getElementById("card-stats");
-      let autoplaySliderEl = document.getElementById("autoplaySlider");
-      let countdownEl = document.getElementById("countdown");
-      let audioPlayerEl = document.getElementById("audioPlayer");
-      let sliderValueEl = document.getElementById("sliderValue");
-      let pauseSongEl = document.getElementById("pauseSong");
-      let playRandomEl = document.getElementById("playRandom");
-      let playNextEl = document.getElementById("playNext");
-      let playlistSelectEl = document.getElementById("playlistSelect");
-      let gameSpaceEl = document.getElementById("game-space");
-      let saveNameEl = document.getElementById("playlistName");
-
-      let playedSongsOrder = JSON.parse(localStorage.getItem("playedSongs") || "[]");
-      let autoplayTimer = null;
-      let countdownInterval = null;
-      let deckname = "";
-      let customInputString = "";
-
-      let deckIsGenerated = false;
-      let deckList = {};
-      let cardNameMapping = {};
-      let images = {};
-      let cardsLeft = 0;
-      
-      let songStart = 0;
-
-      let stats = {}
-
-      let correct = true;
-      let dragged = null;
-
-      function getDisplayName(song) {
-        if (cardNameMapping[song] != undefined) {
-          return cardNameMapping[song];
-        }
-        return song.endsWith(".mp3") ? song.slice(0, -4) : song;
-      }
-
-      function updateSongListUI() {
-        let songList = document.getElementById("song-list");
-        songList.innerHTML = "";
-        if (!availableSongs || availableSongs.length === 0) {
-          songList.innerHTML = "<li>No playlist loaded.</li>";
-          document.getElementById("totalSongs").innerText = "0";
-          document.getElementById("songsLeft").innerText = "0";
-          return;
-        }
-        const unplayedSongs = availableSongs.filter((song) => !playedSongsOrder.includes(song));
-        document.getElementById("totalSongs").innerText = availableSongs.length;
-        document.getElementById("songsLeft").innerText = unplayedSongs.length;
-        unplayedSongs.forEach((song) => {
-          let li = document.createElement("li");
-          li.textContent = getDisplayName(song);
-          li.onclick = function () {
-            cancelAutoplayTimer();
-            playSong(song);
-          };
-          songList.appendChild(li);
-        });
-      }
-
-      function updatePlayedSongsUI() {
-        let playedList = document.getElementById("played-song-list");
-        playedList.innerHTML = "";
-        if (!availableSongs || availableSongs.length === 0) return;
-        const playedSongs = playedSongsOrder.filter((song) => availableSongs.includes(song));
-        playedSongs.forEach((song) => {
-          let li = document.createElement("li");
-          li.textContent = getDisplayName(song);
-          li.classList.add("played");
-          li.onclick = function () {
-            cancelAutoplayTimer();
-            playSong(song);
-          };
-          playedList.appendChild(li);
-        });
-      }
-
-      function updateCardStatsUI() {
-        cardstatsEl.innerHTML = "";
-        if (deckList.length === 0) {
-          return;
-        }
-
-        const playedCards = Object.keys(deckList).filter((songTitle) => {
-          return "timeTaken" in deckList[songTitle];
-        });
-        playedCards.sort((s1, s2) => {
-          if (deckList[s1]["status"] === "rerolled" && deckList[s2]["status"] === "correct") {
-            return 1;
-          } else if (deckList[s1]["status"] === "correct" && deckList[s2]["status"] === "rerolled") {
-            return -1;
-          } else {
-            return deckList[s1]["timeTaken"] - deckList[s2]["timeTaken"];
-          }
-        });
-
-        playedCards.forEach((songTitle) => {
-          let li = document.createElement("li");
-          li.innerHTML = `${deckList[songTitle]["timeTaken"] / 1000}: ${getDisplayName(songTitle)}<span class="right-align">Remaining Cards After Taken: ${deckList[songTitle]["cardsLeft"]}</span>`;
-          li.classList.add(deckList[songTitle]["status"]);
-          cardstatsEl.appendChild(li);
-        })
-      }
-
-      function startAutoplayTimer() {
-        let duration = parseInt(autoplaySliderEl.value, 10);
-        let secondsLeft = duration;
-        countdownEl.innerText = secondsLeft;
-        countdownInterval = setInterval(() => {
-          secondsLeft--;
-          if (secondsLeft <= 0) {
-            clearInterval(countdownInterval);
-            countdownInterval = null;
-          }
-          countdownEl.innerText = secondsLeft;
-        }, 1000);
-        autoplayTimer = setTimeout(() => {
-          cancelAutoplayTimer();
-          playNextSong();
-        }, duration * 1000);
-      }
-
-      function cancelAutoplayTimer() {
-        if (autoplayTimer !== null) {
-          clearTimeout(autoplayTimer);
-          autoplayTimer = null;
-        }
-        if (countdownInterval !== null) {
-          clearInterval(countdownInterval);
-          countdownInterval = null;
-        }
-        countdownEl.innerText = "0";
-      }
-
-      async function playNextSong() {
-        if (!availableSongs || availableSongs.length === 0) {
-          alert("No playlist loaded.");
-          return;
-        }
-        const unplayedSongs = availableSongs.filter((song) => !playedSongsOrder.includes(song));
-        if (unplayedSongs.length === 0) {
-          alert("No unplayed songs available. Reset played songs to choose again.");
-          return;
-        }
-        if (!deckIsGenerated) {
-          alert("Generate a deck first.");
-          return;
-        }
-
-        await handlePreviousSong();
-        
-        let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
-
-        songStart = performance.now();
-        correct = false;
-
-        playSong(randomSong);
-      }
-
-      function playSong(song) {
-        cancelAutoplayTimer();
+      function playSong(song, randomStart) {
         let audioSource;
-        audioSource = "stored-songs/" + deckname + "/" + encodeURIComponent(song);
+        audioSource = "stored-songs/" + deck + "/" + encodeURIComponent(song);
         audioPlayerEl.src = audioSource;
         audioPlayerEl.load();
 
@@ -375,14 +286,7 @@
 
         function onCanPlayThrough() {
           audioPlayerEl.removeEventListener("canplaythrough", onCanPlayThrough);
-          autoplaySlider.min = 0;
-          autoplaySlider.max = Math.floor(audioPlayerEl.duration);
-          if (parseInt(autoplaySlider.value, 10) > audioPlayerEl.duration) {
-            autoplaySlider.value = Math.floor(audioPlayerEl.duration / 2);
-          }
-          sliderValueEl.innerText = autoplaySliderEl.value;
-          let halfDuration = audioPlayerEl.duration / 2;
-          let randomStart = Math.random() * halfDuration;
+
           audioPlayerEl.currentTime = randomStart;
 
           attemptPlayback();
@@ -391,209 +295,16 @@
             console.warn("Audio error event fired, retrying playback...");
             setTimeout(attemptPlayback, 500);
           };
-          if (document.getElementById("autoplaySwitch").checked) {
-            startAutoplayTimer();
-          }
         }
         audioPlayerEl.addEventListener("canplaythrough", onCanPlayThrough);
-
-        document.getElementById("currentSong").innerText = getDisplayName(song);
-        const index = playedSongsOrder.indexOf(song);
-        if (index !== -1) {
-          playedSongsOrder.splice(index, 1);
-        }
-        playedSongsOrder.unshift(song);
-        localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
-        updateSongListUI();
-        updatePlayedSongsUI();
       }
-
-      pauseSongEl.addEventListener("click", function() {
-        if (audioPlayerEl.paused) {
-          audioPlayerEl.play();
-        } else {
-          audioPlayerEl.pause();
-        }
-      });
-
-      audioPlayerEl.addEventListener("play", function() {
-        pauseSongEl.innerHTML = "Pause Current Song";
-      });
-
-      audioPlayerEl.addEventListener("pause", function() {
-        pauseSongEl.innerHTML = "Play Current Song";
-      });
-
-      playRandomEl.addEventListener("click", async function () {
-        cancelAutoplayTimer();
-        if (!availableSongs || availableSongs.length === 0) {
-          alert("No playlist loaded.");
-          return;
-        }
-        const unplayedSongs = availableSongs.filter((song) => !playedSongsOrder.includes(song));
-        if (unplayedSongs.length === 0) {
-          alert("No unplayed songs available. Reset played songs to choose again.");
-          return;
-        }
-        if (!deckIsGenerated) {
-          alert("Generate a deck first.");
-          return;
-        }
-
-        await handlePreviousSong();
-        
-        let randomSong = unplayedSongs[Math.floor(Math.random() * unplayedSongs.length)];
-        //console.log("random song: " + randomSong);
-
-        songStart = performance.now();
-        correct = false;
-        
-        playSong(randomSong);
-      });
-
-      playNextEl.addEventListener("click", function () {
-        cancelAutoplayTimer();
-        playNextSong();
-      });
-
-      autoplaySliderEl.addEventListener("input", function () {
-        sliderValueEl.innerText = this.value;
-      });
-
-      document.getElementById("toggleAudioPlayer").addEventListener("click", function (event) {
-        toggleDivVisibility(event, "audio", "Audio Player");
-      });
-
-      document.getElementById("togglePlaylistVisibility").addEventListener("click", function (event) {
-        toggleDivVisibility(event, "playlists", "Playlist");
-      });
-
-      document.getElementById("toggleStatsVisibility").addEventListener("click", function(event) {
-        toggleDivVisibility(event, "card-stats", "Card");
-      });
-
-      function toggleDivVisibility(event, toToggle, toggleText) {
-        let toggleEl = document.getElementById(toToggle);
-        if (toggleEl.style.display === "none") {
-          toggleEl.style.display = "block";
-          event.target.innerHTML = `Hide ${toggleText} Visibility`;
-        } else {
-          toggleEl.style.display = "none";
-          event.target.innerHTML = `Show ${toggleText} Visibility`;
-        }
-      }
-
-      function loadPlaylistsList() {
-        fetch("/get-playlists")
-          .then((response) => response.json())
-          .then((data) => {
-            playlistSelectEl.innerHTML = "";
-            data.playlists.forEach((filename) => {
-              let option = document.createElement("option");
-              option.value = filename;
-              option.textContent = filename;
-              playlistSelectEl.appendChild(option);
-            });
-          })
-          .catch((error) => console.error("Error:", error));
-      }
-
-      document.getElementById("loadPlaylist").addEventListener("click", function () {
-        let filename = playlistSelectEl.value;
-        deckname = playlistSelectEl.value.substring(0, playlistSelectEl.value.length - 5);
-        if (!filename) {
-          alert("No playlist selected.");
-          return;
-        }
-        fetch(`/load-playlist?filename=${encodeURIComponent(filename)}`)
-          .then((response) => response.json())
-          .then((data) => {
-            availableSongs = data.songs;
-            playedSongsOrder = playedSongsOrder.filter((song) => availableSongs.includes(song));
-            localStorage.setItem("playedSongs", JSON.stringify(playedSongsOrder));
-            updateSongListUI();
-            updatePlayedSongsUI();
-            alert("Playlist loaded with " + availableSongs.length + " songs.");
-
-            if (customInputString === "") {
-              let customOut = "";
-              availableSongs.forEach((v) => {
-                customOut += `${v}\t${v}\n`
-              })
-              customInputString = customOut;
-              cardNameMapping = {};
-            }
-          })
-          .catch((error) => console.error("Error:", error));
-      });
-
-      document.getElementById("generateDeck").addEventListener("click", function () {
-        if (deckIsGenerated && !confirm("Are you sure you want to generate a new deck?")) {
-          return;
-        }
-        playedSongsOrder = [];
-        localStorage.removeItem("playedSongs");
-        cardstatsEl.innerHTML = "";
-        updateSongListUI();
-        updatePlayedSongsUI();
-
-        let deckLength = (availableSongs.length > 80) ? 50 : Math.floor(availableSongs.length / 4) * 2;
-        if (deckLength == 0) {
-          alert("Please load a deck first.");
-          return;
-        }
-        if (deckLength > availableSongs.length) {
-          alert("Advancement: How did we get here? (debug)");
-          return;
-        }
-
-        stats = {
-          "errors": 0,
-          "rerolls": 0,
-          "correct": 0,
-          "timetaken": 0,
-          "lastCard": 0
-        }
-
-        cardNameMapping = parseCustomInput(customInputString);
-
-        deckList = {}
-        cardsLeft = deckLength;
-
-        let songsCopy = availableSongs.slice();
-        let p1 = songsCopy.length;
-        while (p1 != 0) {
-          let p2 = Math.floor(Math.random() * p1);
-          p1--;
-          [songsCopy[p1], songsCopy[p2]] = [songsCopy[p2], songsCopy[p1]];
-        }
-        for (i = 0; i < deckLength; i++) {
-          deckList[songsCopy[i]] = {};
-        }
-
-        gameSpaceEl.innerHTML = "";
-
-        let statsBox = document.createElement("pre");
-        statsBox.id = "stats-box";
-        gameSpaceEl.appendChild(statsBox);
-        updateStatsBox();
-
-        Object.keys(deckList).forEach((songTitle) => {
-          gameSpaceEl.appendChild(createCardElement(songTitle));
-        });
-        deckIsGenerated = true;
-      });
 
       function handleSongChoice(event) {
         if (correct) {
           return;
         }
-        if (playedSongsOrder.length < 1) {
-          return;
-        }
         let target = (event.target.id === "") ? event.target.parentElement : event.target;
         chosenTitle = target.id;
-        currentSong = playedSongsOrder[0];
         
         if (currentSong === chosenTitle) {
           correct = true;
@@ -603,130 +314,46 @@
           target.style.cursor = "auto";
           target.id = "";
           target.draggable = false;
-          cardsLeft--;
-          console.log("CORRECT, CARDS LEFT:", cardsLeft)
 
           let timeForCard = Math.round(performance.now() - songStart); 
-          deckList[chosenTitle]["timeTaken"] = timeForCard;
-          deckList[chosenTitle]["cardsLeft"] = cardsLeft;
-          deckList[chosenTitle]["status"] = "correct";
-          stats["correct"] += 1;
-          stats["timetaken"] += timeForCard;
-          stats["lastCard"] = timeForCard;
-          updateCardStatsUI();
 
-          if (cardsLeft == 0) {
-            alert(`debug: now this is epical, time is ${stats["timetaken"] / 1000}\n
-                you got ${stats["correct"]} correct\n
-                you made ${stats["errors"]} errors\n
-                you received ${stats["rerolls"]} rerolls`);
-          }
+          countdownEl.innerHTML = "Waiting for round results..."
+          socket.emit('player_response', { player_id: playerID, room: room_key, response_time: timeForCard })
+          canTapOut = false;
+          tapoutEl.disabled = true;
         } else if (!correct) {
-          let songDict = deckList[chosenTitle];
-          stats["errors"] += 1;
-          if (addNextCard().then((res) => res)) {
-            cardsLeft++;
-            console.log("INCORRECT, CARDS LEFT:", cardsLeft)
-          } else {
-            console.log("INCORRECT, CARDS LEFT (OUT OF REPLACEMENTS):", cardsLeft)
-          }
-        }
-
-        updateStatsBox();
-      }
-
-      function handlePreviousSong() {
-        if (!correct && playedSongsOrder.length > 0 && Object.keys(deckList).includes(playedSongsOrder[0])) {
-          console.log("rerolling card");
-          let toReroll = document.getElementById(playedSongsOrder[0]);
-          return addNextCard(toReroll).then((res) => {
-            if (!res) {
-              toReroll.removeEventListener("click", handleSongChoice);
-              toReroll.innerHTML = "";
-              toReroll.style.borderColor = "white";
-              cardsLeft--;
-              console.log("FAILED REROLL, CARDS LEFT:", cardsLeft)
-            }
-            let timeForCard = Math.round(performance.now() - songStart); 
-            deckList[playedSongsOrder[0]]["status"] = "rerolled";
-            deckList[playedSongsOrder[0]]["timeTaken"] = timeForCard;
-            deckList[playedSongsOrder[0]]["cardsLeft"] = cardsLeft;
-            stats["timetaken"] += timeForCard;
-            stats["lastCard"] = timeForCard;
-            stats["rerolls"] += 1;
-            updateCardStatsUI();
-            updateStatsBox();
-            console.log("SUCCESSFUL REROLL, CARDS LEFT:", cardsLeft)
-            return true;
-          });
+          // probably mess with card IDs, make it red. for now just alert i guess
+          alert("wrong");
+          faulted = 1;
         }
       }
 
-      function parseCustomInput(input) {
-        let out = {}
-        try {
-          out = JSON.parse(input);
-        } catch (error) {
-          console.log("custom input is not json, attempting sheet parse")
-        }
-        let lines = input.split(/\r?\n/);
-        lines.forEach((line) => {
-          let parts = line.split(/\t/);
-          if (parts.length === 2) {
-            out[parts[0]] = parts[1]
-          }
-        })
-        return out;
-      }
-
-      function addNextCard(toReplace = null) {
-        let remainingCards = availableSongs.filter((song) => {
-          return !playedSongsOrder.includes(song) && !Object.keys(deckList).includes(song);
-        });
-
+      function addNextCard(toReplace = null, nextCardTitle = null, faultParams = {}) {
         return new Promise((resolve) => {
-          
-          if (remainingCards.length === 0) {
+          if (nextCardTitle === "") {
+            console.log("just emitting fault message")
+            socket.emit('fault_msg', faultParams);
             resolve(false);
           }
 
-          nextCardTitle = remainingCards[Math.floor(Math.random() * remainingCards.length)];
-
-          if (toReplace === null) {
-            let found = false;
-            for (const child of gameSpaceEl.children) {
-              if (child.id == "" || child.id == null) {
-                gameSpaceEl.replaceChild(createCardElement(nextCardTitle), child);
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              gameSpaceEl.appendChild(createCardElement(nextCardTitle));
-            }
-            resolve(true);
-          } else {
+          toReplace.style.outline = "4px solid red";
+          toReplace.style.outlineOffset = "-4px";
+          readyButtonEl.disabled = true;
+          correct = true;
+          console.log(correct);
+          setTimeout(() => {
+            gameSpaceEl.replaceChild(createCardElement(nextCardTitle), toReplace);
+            let next = document.getElementById(nextCardTitle);
             toReplace.style.outline = "4px solid red";
             toReplace.style.outlineOffset = "-4px";
-            playRandomEl.disabled = true;
-            playNextEl.disabled = true;
-            correct = true;
-            console.log(correct);
             setTimeout(() => {
-              gameSpaceEl.replaceChild(createCardElement(nextCardTitle), toReplace);
-              let next = document.getElementById(nextCardTitle);
-              toReplace.style.outline = "4px solid red";
-              toReplace.style.outlineOffset = "-4px";
-              setTimeout(() => {
-                toReplace.style.outline = "";
-                toReplace.style.outlineOffset = "";
-                playRandomEl.disabled = false;
-                playNextEl.disabled = false;
-                correct = false;
-                resolve(true);
-              }, 1500);
+              toReplace.style.outline = "";
+              toReplace.style.outlineOffset = "";
+              readyButtonEl.disabled = false;
+              socket.emit('fault_msg', faultParams);
+              resolve(true);
             }, 1500);
-          }
+          }, 1500);
         });
       }
 
@@ -745,7 +372,7 @@
         cardImage.draggable = false;
         songCard.draggable = true;
 
-        let cardTitle = (cardNameMapping[songTitle] != undefined) ? cardNameMapping[songTitle] : songTitle;
+        let cardTitle = songTitle;
 
         songCard.addEventListener("click", handleSongChoice);
 
@@ -800,13 +427,7 @@
         }
         cardImage.src = images[songTitle] || "";
 
-        deckList[songTitle] = {}
-
         return songCard;
-      }
-
-      function updateStatsBox() {
-        document.getElementById("stats-box").innerHTML = JSON.stringify(stats, null, 2).replace(/[{}"]/g, "");
       }
 
       function loadCustom() {
@@ -837,14 +458,41 @@
         });
       }
 
-      function confirmNavigation() {
-        if (confirm("Are you sure you want to leave the room?")) {
-          socket.emit('leave_room', { room: room_key, player_id: playerID });
+      function toggleReady() {
+        let checkedStatus = !readyEl.checked;
+        readyEl.checked = checkedStatus;
+
+        console.log("status", checkedStatus)
+        if (checkedStatus) {
+          socket.emit('player_ready', { player_id: playerID, room: room_key });
+        } else {
+          socket.emit('player_unready', { player_id: playerID, room: room_key });
         }
-        return res
       }
 
-      loadPlaylistsList();
+      function tapOut() {
+        countdownEl.innerHTML = ("Waiting for round results...")
+        socket.emit('player_response', { player_id: playerID, room: room_key, response_time: -2 })
+        tapoutEl.disabled = true;
+      }
+
+      function confirmNavigation() {
+        res = confirm("Are you sure you want to leave the room?");
+        if (res) {
+          socket.emit('leave_room', { room: room_key, player_id: playerID });
+        }
+        return res;
+      }
+
+      function updateScores() {
+        ownScoreEl.innerHTML = "You: " + ownScore;
+        otherScoreEl.innerHTML = "Opponent: " + otherScore;
+      }
+
+      function updateLogs(newEntry) {
+        notificationsEl.innerHTML += (newEntry + "<br/>");
+        notificationsEl.scrollTop = notificationsEl.scrollHeight;
+      }
     </script>
   </body>
 </html>

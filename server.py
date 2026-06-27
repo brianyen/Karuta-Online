@@ -13,7 +13,6 @@ app.config['SECRET_KEY'] = 'password'
 
 socketio = SocketIO(app, async_mode='gevent')
 
-SONGS_FOLDER = "stored-songs"
 PROGRESS_FILE = "progress.json"
 MAPPING_FOLDER = "custom"
 IMAGE_FOLDER = "images"
@@ -54,8 +53,6 @@ def join_game(data):
       player_info = room_entry["player_info"]
       if player_id not in player_info:
         print("ATTENTION: player seems to be rejoining a room, but they're not in the room's player list")
-      if len(player_info) == 1:
-        print("ATTENTION: player rejoining and after rejoining, room has 1 person. room should have probably been deconstructed")
       emit_room_status_switch(room_dict, room_key) 
     elif player_id in room_dict["players"]:
       # PLAYER EXISTS, MOVED ROOMS W/O DICT UPDATING (hopefully uncommon branch)
@@ -102,7 +99,147 @@ def disconnect_room(data):
   # set player status to disconnect --> set timer
   player_entry = room_dict["players"].get(player_id)
   player_entry["status"] = PlayerState.DISCONNECT
+  if player_entry["ready"]:
+    player_entry["ready"] = False
+    room_dict["rooms"][player_entry["room_code"]]["ready_count"] -= 1
+    if (room_dict["rooms"][player_entry["room_code"]]["ready_count"] < 0):
+      print("ATTENTION: READY COUNT IN THE NEGATIVES")
   handle_disconnect_timer(socketio, room_dict, player_id, player_entry["room_code"])
+
+@socketio.on('player_ready')
+def player_ready(data):
+  player_id = data.get('player_id')
+  room_key = data.get('room')
+  player_entry = room_dict["players"][player_id]
+  room_entry = room_dict["rooms"][room_key]
+
+  print(room_entry["status"])
+  if room_entry["status"] != RoomState.LOBBY_2P and room_entry["status"] != RoomState.LOBBY_1P:
+    return
+
+  if not player_entry["ready"]:
+    player_entry["ready"] = True
+    room_entry["ready_count"] += 1
+    if (room_entry["ready_count"] > 2):
+      print("ATTENTION: READY COUNT > 3")
+
+  print("ready_count:", room_entry["ready_count"])
+  if (room_entry["ready_count"] == 2):
+    song_choice(room_dict, player_id, room_key)
+  return
+
+@socketio.on('player_response')
+def player_response(data):
+  print("entering player response handler")
+  player_id = data.get('player_id')
+  room_key = data.get('room')
+  response_time = data.get('response_time')
+  player_entry = room_dict["players"][player_id]
+  room_entry = room_dict["rooms"][room_key]
+
+  other_player_id = [id for id in room_entry["player_info"] if id != player_id][0]
+  other_player_entry = room_dict["players"][other_player_id]
+  other_response_time = other_player_entry["response_time"]
+
+  player_entry["response_time"] = response_time
+
+  if response_time < 0: # tapped out
+    player_entry["response_time"] == -2
+    if other_response_time == -2: # other player tapped out
+      print("both tapped out")
+      pass_song(room_dict, player_id, room_key)
+    elif other_response_time == -1: # still waiting on other player
+      print("one tapped out")
+      return
+    elif other_response_time >= 0: # other player got the song
+      print("one tapped out after other got song")
+      declare_round_winner(room_dict, other_player_id, room_key)
+    else:
+      print("ATTENTION: tracked player response time is negative number besides -1, -2")
+  else: # got the card
+    player_entry["response_time"] == response_time
+    if other_response_time == -2: # other player tapped out
+      print("got song while other tapped out")
+      declare_round_winner(room_dict, player_id, room_key)
+    elif other_response_time == -1: # still waiting on other player
+      print("got song")
+      handle_card_buffer(socketio, room_dict, player_id, room_key)
+    elif other_response_time >= 0: # other player got the song
+      if other_response_time > response_time:
+        print("got song faster")
+        declare_round_winner(room_dict, player_id, room_key)
+      elif other_response_time < response_time:
+        print("got song slower")
+        declare_round_winner(room_dict, other_player_id, room_key)
+      elif other_response_time == response_time:
+        print("got song at a tie")
+        declare_round_winner(room_dict, random.choice([player_id, other_player_id]), room_key)
+      else:
+        print("ATTENTION: how did we even reach this branch man. response time might be none or something idk")
+    else:
+      print("ATTENTION: tracked player response time is negative number besides -1, -2")
+  return
+
+@socketio.on('player_unready')
+def player_unready(data):
+  player_id = data.get('player_id')
+  room_key = data.get('room')
+  player_entry = room_dict["players"][player_id]
+  room_entry = room_dict["rooms"][room_key]
+
+  if player_entry["ready"]:
+    player_entry["ready"] = False
+    room_entry["ready_count"] -= 1
+    if (room_entry["ready_count"] < 0):
+      print("ATTENTION: READY COUNT IN THE NEGATIVES")
+  return
+
+@socketio.on('fault_msg')
+def handle_faults(data):
+  player_id = data.get('player_id')
+  room_key = data.get('room')
+  fault_status = data.get('fault_status')
+  player_entry = room_dict["players"][player_id]
+  room_entry = room_dict["rooms"][room_key]
+
+  other_player_id = [id for id in room_entry["player_info"] if id != player_id][0]
+  other_player_entry = room_dict["players"][other_player_id]
+  other_fault_status = other_player_entry["fault_status"]
+
+  fault_args = { player_id: 0, other_player_id: 0 }
+
+  if other_fault_status == 0:
+    player_entry["fault_status"] = fault_status
+  else:
+    if other_fault_status == -1:
+      if fault_status == -1:
+        pass
+      elif fault_status == 1:
+        fault_args[player_id] = 1
+        player_entry["cards_left"] += 1
+        other_player_entry["cards_left"] -= 1
+      else:
+        print("ATTENTION: bad fault status 1", fault_status, other_fault_status)
+    elif other_fault_status == 1:
+      fault_args[other_player_id] = 1
+      if fault_status == -1:
+        player_entry["cards_left"] -= 1
+        other_player_entry["cards_left"] += 1
+      elif fault_status == 1:
+        fault_args[player_id] = 1
+      else:
+        print("ATTENTION: bad fault status 2:", fault_status, other_fault_status)
+    else:
+      print("ATTENTION: bad fault status 3:", fault_status, other_fault_status)
+
+  # need to check if there's a winner after faults
+  if player_entry["cards_left"] == 0:
+    declare_game_winner(room_dict, player_id, room_key)
+  elif other_player_entry["cards_left"] == 0:
+    declare_game_winner(room_dict, other_player_id, room_key)
+  else:
+    room_entry["status"] = RoomState.LOBBY_2P
+    emit('fault_response', {"args": fault_args}, to=room_key)
 
 @app.route('/')
 def home():
@@ -137,8 +274,11 @@ def create_room():
       "player_info": [],
       "status": RoomState.LOBBY_1P,
       "deck_name": deck_name,
-      "available_songs": all_songs[:len(all_songs) // 2],
-      "unplayed_songs": all_songs[len(all_songs) // 2:]
+      "all_songs": all_songs,
+      "available_songs": all_songs[:(len(all_songs) // 4) * 2], # replace with per-playing tracking eventually
+      "unplayed_songs": all_songs[(len(all_songs) // 4) * 2:],
+      "ready_count": 0,
+      "current_song": ""
     }
     return jsonify({ "url": f"/multiplayer?room={code}"})
   except Exception as e:
