@@ -126,6 +126,7 @@
       let dragged = null;
       let songStart = null;
       let faulted = -1;
+      let wrongCards = [];
 
       let params = new URLSearchParams(document.location.search);
       let room_key = params.get("room"); 
@@ -231,6 +232,11 @@
           otherScore--;
           updateLogs("RESULT: Opponent won the card " + currentSong);
         }
+
+        wrongCards.forEach(card => {
+          card.style.outline = "";
+          card.style.outlineOffset = "";
+        })
 
         updateScores();
 
@@ -348,8 +354,9 @@
           canTapOut = false;
           tapoutEl.disabled = true;
         } else if (!correct) {
-          // probably mess with card IDs, make it red. for now just alert i guess
-          alert("wrong");
+          wrongCards.push(target);
+          target.style.outline = "2px solid red";
+          target.style.outlineOffset = "-2px";
           faulted = 1;
         }
       }
