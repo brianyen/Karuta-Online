@@ -304,6 +304,7 @@ def join_room_rq():
 
 @app.route('/stored-songs/<deckname>/<filename>')
 def serve_audio_deck(deckname, filename):
+  print("serving audio now...")
   return send_file(os.path.join(SONGS_FOLDER, deckname, filename))
 
 @app.route('/get-playlists', methods=['GET'])

@@ -146,20 +146,14 @@
       });
 
       socket.on('create_success_2p', (e) => {
-        deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
-        deckDisplayEl.innerHTML = "Deck: " + deck;
-        let count = 0
-        const arraysEqual = (a, b) => a.length === b.length && a.every((val, index) => val === b[index]);
-        if (!arraysEqual(e.songs, availableSongs)) {
-          availableSongs = e.songs;
-          availableSongs.forEach((song) => {
-            count++;
-            gameSpaceEl.appendChild(createCardElement(song));
-          })
-        }
-        ownScore = Math.trunc(count / 2);
-        otherScore = Math.trunc(count / 2);
-        updateScores();
+        console.log("create success 2p")
+        tapoutDivEl.style.display = "none";
+        tapoutEl.disabled = false;
+        correct = true;
+        readyDivEl.style.display = "block";
+        readyButtonEl.disabled = false;
+
+        initGameState(e);
       });
 
       socket.on('start_playing', (e) => {
@@ -191,6 +185,7 @@
       });
 
       socket.on('round_results', (e) => {
+        console.log("round results handling")
         let winner = e.winner;
         let remove = e.remove;
         let add = e.add;
@@ -257,6 +252,26 @@
         correct = true;
         readyDivEl.style.display = "block";
         readyButtonEl.disabled = false;
+      })
+
+      socket.on('re_emission', (e) => {
+        if (currentSong != "") {
+          return;
+        }
+        initGameState(e);
+        countdownEl.innerHTML = "Round Started"
+        currentSong = e.song;
+        readyDivEl.style.display = 'none';
+        readyEl.checked = false;
+        tapoutDivEl.style.display = 'block';
+        correct = true;
+        faulted = -1;
+        answerEl.innerHTML = "Now playing..."
+        tapOut();
+        if (e.round_over) {
+          countdownEl.innerHTML = "Round is finished"
+          answerEl.innerHTML = "Song name: " + currentSong;
+        }
       })
 
       socket.on('game_finished', () => {
@@ -492,6 +507,26 @@
       function updateLogs(newEntry) {
         notificationsEl.innerHTML += (newEntry + "<br/>");
         notificationsEl.scrollTop = notificationsEl.scrollHeight;
+      }
+
+      function initGameState(e) {
+        deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
+        deckDisplayEl.innerHTML = "Deck: " + deck;
+        const arraysEqual = (a, b) => a.length === b.length && a.every((val, index) => val === b[index]);
+        if (!arraysEqual(e.songs, availableSongs)) {
+          availableSongs = e.songs;
+          availableSongs.forEach((song) => {
+            gameSpaceEl.appendChild(createCardElement(song));
+          })
+        }
+        Object.keys(e.scores).forEach((id) => {
+          if (id === playerID) {
+            ownScore = e.scores[id];
+          } else {
+            otherScore = e.scores[id];
+          }
+        });
+        updateScores();
       }
     </script>
   </body>

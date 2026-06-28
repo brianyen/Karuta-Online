@@ -44,7 +44,7 @@ def add_player_to_room(room_dict, player_id, room_code, request):
     join_room(room_code)
     if len(player_info) == 1: # temporary state stuff
         room_entry["status"] = RoomState.LOBBY_1P
-    if len(player_info) == 2:
+    if len(player_info) == 2 and room_entry["status"] == RoomState.LOBBY_1P:
         room_entry["status"] = RoomState.LOBBY_2P
     emit_room_status_switch(room_dict, room_code)
 
@@ -70,7 +70,7 @@ def remove_player_from_room(room_dict, player_id, room_code):
     # remove the player/rev index entries from dict
     sid = player_entry["sid"]
     room_dict["players_sid"].pop(sid, None)
-    player_entry = room_dict.pop(player_id, None)
+    room_dict["players"].pop(player_id, None)
     
 def handle_disconnect_timer(socketio, room_dict, player_id, room_code):
     # in theory the player status should have just been set to disconnect. 
@@ -81,7 +81,7 @@ def handle_disconnect_timer(socketio, room_dict, player_id, room_code):
     if player_entry and player_entry["status"] == PlayerState.DISCONNECT:
         remove_player_from_room(room_dict, player_id, room_code)
 
-def song_choice(room_dict, player_id, room_code):
+def song_choice(room_dict, player_id, room_code, from_join=False):
     room_entry = room_dict["rooms"][room_code]
     if len(room_entry["unplayed_songs"]) == 0:
         # hopefully doesn't happen too often (can happen if both players tap out, i guess)
@@ -180,12 +180,32 @@ def reset_players(room_dict, room_code):
 
 def emit_room_status_switch(room_dict, room_code, winner=""):
     room_entry = room_dict["rooms"][room_code]
+    send_params = {
+        "deck": room_entry["deck_name"],
+        "songs": room_entry["available_songs"],
+        "scores": {}
+    }
+
+    for id in room_entry["player_info"]:
+        send_params["scores"][id] = room_dict["players"][id]["cards_left"]
+
     match room_entry["status"]:
         case RoomState.LOBBY_1P:
-            emit('create_success_1p', {"deck": room_entry["deck_name"], "songs": room_entry["available_songs"]}, to=room_code)
+            emit('create_success_1p', send_params, to=room_code)
             return
         case RoomState.LOBBY_2P:
-            emit('create_success_2p', {"deck": room_entry["deck_name"], "songs": room_entry["available_songs"]}, to=room_code)
+            emit('create_success_2p', send_params, to=room_code)
+            return
+        case RoomState.STARTED_SONG:
+            send_params["round_over"] = False
+            send_params["song"] = room_entry["current_song"]
+            emit('re_emission', send_params, to=room_code)
+            return
+        case RoomState.RESULTS_SENT:
+            send_params["round_over"] = True
+            send_params["song"] = room_entry["current_song"]
+            emit('re_emission', send_params, to=room_code)
             return
         case RoomState.GAME_FINISH:
-            emit('game_finished', {"deck": room_entry["deck_name"], "songs": room_entry["available_songs"], "winner": winner}, to=room_code)
+            send_params["winner"] = winner
+            emit('game_finished', send_params, to=room_code)
