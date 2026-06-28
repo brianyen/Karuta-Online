@@ -127,6 +127,7 @@
       let songStart = null;
       let faulted = -1;
       let wrongCards = [];
+      let timeoutActive = false;
 
       let params = new URLSearchParams(document.location.search);
       let room_key = params.get("room"); 
@@ -134,7 +135,7 @@
       let availableSongs = [];
       let currentSong = "";
       let nextRoom = ""
-
+      let init = false;
 
       let ownScore = -1; // eventually replace with tracking full card decks i think
       let otherScore = -1;
@@ -148,21 +149,27 @@
         socket.emit('join_game', { room: room_key, player_id: playerID })
       });
 
-      socket.on('create_success_1p', (e) => {
+      socket.on('1p_room', (e) => {
         deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
         loadCustom();
         deckDisplayEl.innerHTML = "Deck: " + deck;
       });
 
-      socket.on('create_success_2p', (e) => {
-        console.log("create success 2p")
+      socket.on('2p_room', (e) => {
+        console.log("Status: 2p room")
         tapoutDivEl.style.display = "none";
         tapoutEl.disabled = false;
         correct = true;
         readyDivEl.style.display = "block";
-        readyButtonEl.disabled = false;
 
-        initGameState(e);
+        if (!timeoutActive) {
+          readyButtonEl.disabled = false;
+        }
+
+        if (!init) {
+          initGameState(e);
+        }
+        init = true;
       });
 
       socket.on('start_playing', (e) => {
@@ -194,7 +201,8 @@
       });
 
       socket.on('round_results', (e) => {
-        console.log("round results handling")
+        console.log("Handling round results")
+        console.log(e)
         let winner = e.winner;
         let remove = e.remove;
         let add = e.add;
@@ -213,10 +221,13 @@
               target.style.borderColor = "white";
             }
           });
-        } else {
-          socket.emit('fault_msg', faultParams);
+        } else if (target != null) {
+          target.removeEventListener("click", handleSongChoice);
+          target.innerHTML = "";
+          target.style.borderColor = "white";
         }
 
+        socket.emit('fault_msg', faultParams);
         if (winner === playerID) {
           ownScore--;
           updateLogs("RESULT: You won the card " + currentSong);
@@ -247,7 +258,8 @@
       })
 
       socket.on('fault_response', (e) => {
-        console.log("fault response handling")
+        console.log("Handling faults")
+        console.log(e)
         Object.keys(e.args).forEach(key => {
           if (key === playerID && e.args[key] == 1) { // needs to be card replacement later on
             updateLogs("FAULT: You faulted when " + currentSong + " was playing.");
@@ -260,32 +272,24 @@
           }
           updateScores();
         })
-
-        tapoutDivEl.style.display = "none";
-        tapoutEl.disabled = false;
-        correct = true;
-        readyDivEl.style.display = "block";
-        readyButtonEl.disabled = false;
       })
 
       socket.on('re_emission', (e) => {
-        if (currentSong != "") {
+        console.log("entering re-emission")
+        if (init) {
           return;
         }
-        initGameState(e);
+        console.log("made it past if check")
+        deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
         countdownEl.innerHTML = "Round Started"
-        currentSong = e.song;
         readyDivEl.style.display = 'none';
         readyEl.checked = false;
         tapoutDivEl.style.display = 'block';
         correct = true;
         faulted = -1;
         answerEl.innerHTML = "Now playing..."
+        console.log("tapping out...")
         tapOut();
-        if (e.round_over) {
-          countdownEl.innerHTML = "Round is finished"
-          answerEl.innerHTML = "Song name: " + currentSong;
-        }
       })
 
       socket.on('game_finished', () => {
@@ -364,8 +368,6 @@
       function addNextCard(toReplace = null, nextCardTitle = null, faultParams = {}) {
         return new Promise((resolve) => {
           if (nextCardTitle === "") {
-            console.log("just emitting fault message")
-            socket.emit('fault_msg', faultParams);
             resolve(false);
           }
 
@@ -373,7 +375,7 @@
           toReplace.style.outlineOffset = "-4px";
           readyButtonEl.disabled = true;
           correct = true;
-          console.log(correct);
+          timeoutActive = true;
           setTimeout(() => {
             gameSpaceEl.replaceChild(createCardElement(nextCardTitle), toReplace);
             let next = document.getElementById(nextCardTitle);
@@ -383,7 +385,7 @@
               toReplace.style.outline = "";
               toReplace.style.outlineOffset = "";
               readyButtonEl.disabled = false;
-              socket.emit('fault_msg', faultParams);
+              timeoutActive = false;
               resolve(true);
             }, 1500);
           }, 1500);
@@ -469,7 +471,7 @@
           .then(response => response.json())
           .then(data => {
             if (data.error) {
-              console.log("no custom text");
+              console.log("No custom text");
             } else {
               mapping = data;
             }
@@ -478,7 +480,7 @@
             .then(response => response.json())
             .then(data => {
               if (data.error) {
-                console.log("no custom images")
+                console.log("No custom images")
                 resolve(true);
               } else {
                 Object.keys(data).forEach((k) => {
@@ -494,8 +496,6 @@
       function toggleReady() {
         let checkedStatus = !readyEl.checked;
         readyEl.checked = checkedStatus;
-
-        console.log("status", checkedStatus)
         if (checkedStatus) {
           socket.emit('player_ready', { player_id: playerID, room: room_key });
         } else {
@@ -504,6 +504,8 @@
       }
 
       function tapOut() {
+        console.log("in tap out...")
+        correct = true;
         countdownEl.innerHTML = ("Waiting for round results...")
         socket.emit('player_response', { player_id: playerID, room: room_key, response_time: -2 })
         tapoutEl.disabled = true;
@@ -550,7 +552,7 @@
 
       function replayRoom() {
         if (nextRoom === "") {
-          console.log("REPLAYING BUT NEXT ROOM CODE NOT FOUND")
+          console.log("Attempting to replay but the next room's code is not found")
           return;
         }
         let deckName = playlistSelectEl.value

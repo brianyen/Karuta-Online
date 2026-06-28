@@ -29,6 +29,7 @@ def handle_connect():
 
 @socketio.on('join_game')
 def join_game(data):
+  print("about to join room")
   try:
     room_key = data.get('room')
     player_id = data.get('player_id')
@@ -52,6 +53,7 @@ def join_game(data):
       player_info = room_entry["player_info"]
       if player_id not in player_info:
         print("ATTENTION: player seems to be rejoining a room, but they're not in the room's player list")
+      print("join game erss rejoin")
       emit_room_status_switch(room_dict, room_key) 
     elif player_id in room_dict["players"]:
       # PLAYER EXISTS, MOVED ROOMS W/O DICT UPDATING (hopefully uncommon branch)
@@ -68,6 +70,7 @@ def join_game(data):
         print("ATTENTION: i think a player existed but not in the room the dict says they were....")
       if len(player_info) == 1:
         room_dict["rooms"][prev_room]["status"] = RoomState.GAME_FINISH
+        print("join game erss weird rejoin")
         emit_room_status_switch(room_dict, prev_room)
         
       add_player_to_room(room_dict, player_id, room_key, request)
@@ -79,7 +82,8 @@ def join_game(data):
     emit('room_missing', to=request.sid)
 
 @socketio.on('leave_room')
-def leave_room(data):
+def leave_from_room(data):
+  print("leave room handler entered!!")
   player_id = data.get('player_id')
   room_key = data.get('room')
   try:
@@ -89,6 +93,7 @@ def leave_room(data):
 
 @socketio.on('disconnect')
 def disconnect_room(data):
+  print("disconnect room handler entered!!")
   # some integrity checks, hopefully these won't be needed...
   player_id = room_dict["players_sid"].get(request.sid)
   if player_id == None or player_id not in room_dict["players"]:
@@ -198,8 +203,12 @@ def handle_faults(data):
   player_id = data.get('player_id')
   room_key = data.get('room')
   fault_status = data.get('fault_status')
-  player_entry = room_dict["players"][player_id]
-  room_entry = room_dict["rooms"][room_key]
+  player_entry = room_dict["players"].get(player_id)
+  room_entry = room_dict["rooms"].get(room_key)
+
+  if player_entry == None or room_entry == None:
+    # hopefully only activates in special cases (game is over, some weird disconnection)
+    return
 
   other_player_id = [id for id in room_entry["player_info"] if id != player_id][0]
   other_player_entry = room_dict["players"][other_player_id]
@@ -237,8 +246,12 @@ def handle_faults(data):
   elif other_player_entry["cards_left"] == 0:
     declare_game_winner(room_dict, other_player_id, room_key)
   else:
+    print("swapping to lobby 2p (handle faults)")
     room_entry["status"] = RoomState.LOBBY_2P
+    print("from handle faults, emitting fault response")
     emit('fault_response', {"args": fault_args}, to=room_key)
+    print("handle faults erss")
+    emit_room_status_switch(room_dict, room_key)
 
 @app.route('/')
 def home():

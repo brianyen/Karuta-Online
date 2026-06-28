@@ -45,32 +45,44 @@ def add_player_to_room(room_dict, player_id, room_code, request):
     if len(player_info) == 1: # temporary state stuff
         room_entry["status"] = RoomState.LOBBY_1P
     if len(player_info) == 2 and room_entry["status"] == RoomState.LOBBY_1P:
+        print("swapping to 2p status")
         room_entry["status"] = RoomState.LOBBY_2P
+    print("add player erss")
     emit_room_status_switch(room_dict, room_code)
 
 def remove_player_from_room(room_dict, player_id, room_code):
     # remove the client from the room and room entry
+    print("remove player from room entered")
     player_info = room_dict["rooms"][room_code]["player_info"]
     player_entry = room_dict["players"][player_id]
     leave_room(room_code)
     if player_id in player_info:
+        print("b1")
         player_info.remove(player_id)
 
-    if (len(player_info)) == 1: # 1 player left, they won
-        room_dict["rooms"][room_code]["status"] = RoomState.GAME_FINISH
-        emit_room_status_switch(room_dict, room_code)
-    if (len(player_info)) == 0: # no players left, delete the room entry
-        room_dict["rooms"].pop(room_code, None)
-
     if player_entry["ready"]:
+        print("b2")
         room_dict["rooms"][room_code]["ready_count"] -= 1
         if (room_dict["rooms"][room_code]["ready_count"] < 0):
             print("ATTENTION: READY COUNT IN THE NEGATIVES")
+    if (len(player_info)) == 1: # 1 player left, they won
+        print("b3")
+        room_dict["rooms"][room_code]["status"] = RoomState.GAME_FINISH
+        print("remov player erss")
+        emit_room_status_switch(room_dict, room_code)
+    if (len(player_info)) == 0: # no players left, delete the room entry
+        print("b4")
+        room_dict["rooms"].pop(room_code, None)
+
+    print("b5")
+
 
     # remove the player/rev index entries from dict
+    print("clearing entries from player (leave room)")
     sid = player_entry["sid"]
     room_dict["players_sid"].pop(sid, None)
     room_dict["players"].pop(player_id, None)
+    print("checking entry after removing:", room_dict["players"].get(player_id))
     
 def handle_disconnect_timer(socketio, room_dict, player_id, room_code):
     # in theory the player status should have just been set to disconnect. 
@@ -86,8 +98,10 @@ def song_choice(room_dict, player_id, room_code, from_join=False):
     if len(room_entry["unplayed_songs"]) == 0:
         # hopefully doesn't happen too often (can happen if both players tap out, i guess)
         room_entry["status"] = RoomState.GAME_FINISH
+        print("song choice erss")
         emit_room_status_switch(room_dict, room_code)
     next_song = room_entry["all_songs"].pop(random.randint(0, len(room_entry["all_songs"]) - 1))
+    print("song choice: swapping state to started song")
     room_entry["status"] = RoomState.STARTED_SONG
     room_entry["ready_count"] = 0
     room_entry["current_song"] = next_song
@@ -106,6 +120,7 @@ def song_choice(room_dict, player_id, room_code, from_join=False):
 
 def pass_song(room_dict, player_id, room_code):
     # switch this part to looking through each player's array to find the song. for now, sides dont exist so just look through "available_songs"
+    print("in pass song")
     room_entry = room_dict["rooms"][room_code]
     current_song = room_entry["current_song"]
     available_songs = room_entry["available_songs"]
@@ -120,12 +135,14 @@ def pass_song(room_dict, player_id, room_code):
             available_songs.append(next_song)
             update["add"] = next_song
 
+    print('from pass song, emitting round results')
     emit("round_results", update, to=room_code)
     room_entry["status"] = RoomState.RESULTS_SENT
     room_entry["current_song"] = ""
     reset_players(room_dict, room_code)
 
 def declare_round_winner(room_dict, player_id, room_code):
+    print("in declare round winner")
     room_entry = room_dict["rooms"][room_code]
     current_song = room_entry["current_song"]
     player_entry = room_dict["players"][player_id]
@@ -138,6 +155,7 @@ def declare_round_winner(room_dict, player_id, room_code):
     else: 
         print("ATTENTION: round was won on some song but it's no longer in the dictionary's available songs")
 
+    print("from round winner, emitting round results")
     emit("round_results", update, to=room_code)
     room_entry["status"] = RoomState.RESULTS_SENT
     room_entry["current_song"] = ""
@@ -146,6 +164,7 @@ def declare_round_winner(room_dict, player_id, room_code):
 
 def declare_game_winner(room_dict, player_id, room_code):
     room_dict["rooms"][room_code]["status"] = RoomState.GAME_FINISH
+    print("game winner erss")
     emit_room_status_switch(room_dict, room_code, winner=player_id)
     return
 
@@ -209,19 +228,19 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
 
     match room_entry["status"]:
         case RoomState.LOBBY_1P:
-            emit('create_success_1p', send_params, to=room_code)
+            print("from emit room status switch, emiting 1p room")
+            emit('1p_room', send_params, to=room_code)
             return
         case RoomState.LOBBY_2P:
-            emit('create_success_2p', send_params, to=room_code)
+            print("from emit room status switch, emiting 2p room")
+            emit('2p_room', send_params, to=room_code)
             return
         case RoomState.STARTED_SONG:
-            send_params["round_over"] = False
-            send_params["song"] = room_entry["current_song"]
+            print("from emit room status switch, emiting re_esmission")
             emit('re_emission', send_params, to=room_code)
             return
         case RoomState.RESULTS_SENT:
-            send_params["round_over"] = True
-            send_params["song"] = room_entry["current_song"]
+            print("from emit room status switch, emiting re_esmission")
             emit('re_emission', send_params, to=room_code)
             return
         case RoomState.GAME_FINISH:
