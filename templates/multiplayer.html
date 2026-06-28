@@ -120,6 +120,7 @@
       let playlistSelectEl = document.getElementById("playlistSelect");
 
       let images = {};
+      let mapping = {};
 
       let correct = true;
       let dragged = null;
@@ -148,6 +149,7 @@
 
       socket.on('create_success_1p', (e) => {
         deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
+        loadCustom();
         deckDisplayEl.innerHTML = "Deck: " + deck;
       });
 
@@ -396,7 +398,7 @@
         cardImage.draggable = false;
         songCard.draggable = true;
 
-        let cardTitle = songTitle;
+        let cardTitle = (mapping[songTitle] != undefined) ? mapping[songTitle] : songTitle;
 
         songCard.addEventListener("click", handleSongChoice);
 
@@ -454,32 +456,32 @@
         return songCard;
       }
 
-      function loadCustom() {
-        fetch("/get-mapping?filename=" + playlistSelectEl.value)
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
-            alert(data.error);
-          } else {
-            customString = "";
-            Object.keys(data).forEach((k) => {
-              customString += `${k}\t${data[k]}\n`;
-            });
-            customInputString = customString;
-          }
-        });
+      async function loadCustom() {
+        return new Promise((resolve) => {
+          fetch("/get-mapping?filename=" + deck + ".json")
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              console.log("no custom text");
+            } else {
+              mapping = data;
+            }
 
-        fetch("/get-images?filename=" + playlistSelectEl.value)
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
-            alert(data.error);
-          } else {
-            Object.keys(data).forEach((k) => {
-              images[k] = data[k];
-            })
-          }
-        });
+            fetch("/get-images?filename=" + deck + ".json")
+            .then(response => response.json())
+            .then(data => {
+              if (data.error) {
+                console.log("no custom images")
+                resolve(true);
+              } else {
+                Object.keys(data).forEach((k) => {
+                  images[k] = data[k];
+                })
+                resolve(true);
+              }
+            });
+          });
+        })
       }
 
       function toggleReady() {
@@ -518,8 +520,9 @@
         notificationsEl.scrollTop = notificationsEl.scrollHeight;
       }
 
-      function initGameState(e) {
+      async function initGameState(e) {
         deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
+        let res = await loadCustom();
         deckDisplayEl.innerHTML = "Deck: " + deck;
         const arraysEqual = (a, b) => a.length === b.length && a.every((val, index) => val === b[index]);
         if (!arraysEqual(e.songs, availableSongs)) {

@@ -326,6 +326,8 @@ def load_playlist():
 def get_custom_mapping():
   filename = request.args.get("filename")
   path = os.path.join(MAPPING_FOLDER, filename)
+
+  print(path)
   
   if os.path.exists(path):
     with open(path, "r") as f:
