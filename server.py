@@ -16,7 +16,6 @@ socketio = SocketIO(app, async_mode='gevent')
 PROGRESS_FILE = "progress.json"
 MAPPING_FOLDER = "custom"
 IMAGE_FOLDER = "images"
-LETTERS = string.ascii_letters
 
 room_dict = {
   "rooms": {},
@@ -264,22 +263,19 @@ def create_room():
     while (code in room_dict['rooms']):
       code = ''.join(random.choices(LETTERS, k=4)).upper()
 
-    filepath = os.path.join("playlists", deck_name)
-    all_songs = []
-    with open(filepath, "r") as f:
-      all_songs = json.load(f)
-    random.shuffle(all_songs)
-
-    room_dict['rooms'][code] = {
-      "player_info": [],
-      "status": RoomState.LOBBY_1P,
-      "deck_name": deck_name,
-      "all_songs": all_songs,
-      "available_songs": all_songs[:(len(all_songs) // 4) * 2], # replace with per-playing tracking eventually
-      "unplayed_songs": all_songs[(len(all_songs) // 4) * 2:],
-      "ready_count": 0,
-      "current_song": ""
-    }
+    return init_room(room_dict, code, deck_name)
+  except Exception as e:
+    print(e)
+    return jsonify({"error": str(e)}), 500
+  
+@app.route('/replay-room-rq', methods=['POST'])
+def replay_room():
+  try:
+    deck_name = request.json.get("deck")
+    code = request.json.get("code")
+  
+    if room_dict["rooms"].get(code) == None:
+      return init_room(room_dict, code, deck_name)
     return jsonify({ "url": f"/multiplayer?room={code}"})
   except Exception as e:
     print(e)

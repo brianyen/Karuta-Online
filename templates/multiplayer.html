@@ -85,6 +85,10 @@
       <div id="tapoutDiv" style="display: none">
         <button id="tapout" onclick="tapOut()">Tap Out</button>
       </div>
+      <div id="nextGameDiv" style="display: none">
+        <select id="playlistSelect"></select>
+        <button id="create-room" onclick="replayRoom()">Create a Room</button>
+      </div>
       <div id="countdown"></div>
       <div id="answer">Song Name:</div>
       <div id="own-score">You:</div>
@@ -99,7 +103,6 @@
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-
       let audioPlayerEl = document.getElementById("audioPlayer");
       let gameSpaceEl = document.getElementById("game-space");
       let readyEl = document.getElementById("readyCheckbox");
@@ -108,12 +111,13 @@
       let tapoutEl = document.getElementById("tapout")
       let tapoutDivEl = document.getElementById("tapoutDiv")
       let deckDisplayEl = document.getElementById("deckDisplay");
-
+      let nextGameDivEl = document.getElementById("nextGameDiv")
       let countdownEl = document.getElementById("countdown");
       let answerEl = document.getElementById("answer");
       let ownScoreEl = document.getElementById("own-score");
       let otherScoreEl = document.getElementById("other-score");
       let notificationsEl = document.getElementById("notifications");
+      let playlistSelectEl = document.getElementById("playlistSelect");
 
       let images = {};
 
@@ -127,6 +131,8 @@
       let deck;
       let availableSongs = [];
       let currentSong = "";
+      let nextRoom = ""
+
 
       let ownScore = -1; // eventually replace with tracking full card decks i think
       let otherScore = -1;
@@ -196,7 +202,7 @@
         countdownEl.innerHTML = "Round is finished"
         answerEl.innerHTML = "Song name: " + currentSong;
 
-        if (target != null) {
+        if (target != null && winner === "") {
           addNextCard(target, add, faultParams).then((res) => {
             if (!res) {
               target.removeEventListener("click", handleSongChoice);
@@ -275,7 +281,10 @@
       })
 
       socket.on('game_finished', () => {
-        countdownEl.innerHTML = "Game is finished";
+        countdownEl.innerHTML = "Game is finished!";
+        readyDivEl.style.display = 'none';
+        tapoutDivEl.style.display = 'none';
+        nextGameDivEl.style.display = 'block';
       })
 
       socket.on('room_missing', () => [
@@ -528,6 +537,50 @@
         });
         updateScores();
       }
+
+      function replayRoom() {
+        if (nextRoom === "") {
+          console.log("REPLAYING BUT NEXT ROOM CODE NOT FOUND")
+          return;
+        }
+        let deckName = playlistSelectEl.value
+        fetch("/replay-room-rq", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deck: deckName, code: nextRoom })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json()
+        })
+        .then(data => {
+          const regexTest = /^\/multiplayer\?room=[A-Z]{4}$/
+          if (!regexTest.test(data.url)) {
+            throw new Error('Returned URL not ok');
+          }
+          window.location.href = data.url;
+        })
+        .catch((error) => console.error("Error:", error));
+      }
+
+      function loadPlaylistsList() {
+        fetch("/get-playlists")
+          .then((response) => response.json())
+          .then((data) => {
+            playlistSelectEl.innerHTML = "";
+            data.playlists.forEach((filename) => {
+              let option = document.createElement("option");
+              option.value = filename;
+              option.textContent = filename;
+              playlistSelectEl.appendChild(option);
+            });
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      loadPlaylistsList();
     </script>
   </body>
 </html>

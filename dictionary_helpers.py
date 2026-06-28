@@ -3,13 +3,13 @@ import random
 import string
 import os
 from flask import jsonify
-from flask_socketio import SocketIO, join_room, leave_room, emit
+from flask_socketio import join_room, leave_room, emit
 from enum import Enum
-from threading import Timer
 from mutagen import File
 from pathlib import Path
 
 SONGS_FOLDER = "stored-songs"
+LETTERS = string.ascii_letters
 
 class RoomState(Enum):
   LOBBY_1P = 1 # 1 player waiting for 2nd to join
@@ -177,6 +177,24 @@ def reset_players(room_dict, room_code):
         player_entry["response_time"] = -1
         player_entry["fault_status"] = 0
 
+def init_room(room_dict, room_code, deck):
+    filepath = os.path.join("playlists", deck)
+    all_songs = []
+    with open(filepath, "r") as f:
+      all_songs = json.load(f)
+    random.shuffle(all_songs)
+
+    room_dict['rooms'][room_code] = {
+      "player_info": [],
+      "status": RoomState.LOBBY_1P,
+      "deck_name": deck,
+      "all_songs": all_songs,
+      "available_songs": all_songs[:(len(all_songs) // 4) * 2], # replace with per-playing tracking eventually
+      "unplayed_songs": all_songs[(len(all_songs) // 4) * 2:],
+      "ready_count": 0,
+      "current_song": ""
+    }
+    return jsonify({ "url": f"/multiplayer?room={room_code}"})
 
 def emit_room_status_switch(room_dict, room_code, winner=""):
     room_entry = room_dict["rooms"][room_code]
@@ -207,5 +225,12 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
             emit('re_emission', send_params, to=room_code)
             return
         case RoomState.GAME_FINISH:
+            code = ''.join(random.choices(LETTERS, k=4)).upper()
+            while (code in room_dict['rooms']):
+                code = ''.join(random.choices(LETTERS, k=4)).upper()
             send_params["winner"] = winner
+            send_params["next_code"] = code
             emit('game_finished', send_params, to=room_code)
+            for id in room_entry["player_info"]:
+                room_dict["players"].pop(id, None)
+            room_dict["rooms"].pop(room_code, None)
