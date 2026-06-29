@@ -1,15 +1,15 @@
 from flask import Flask, jsonify, request, send_file, render_template, send_from_directory, request
 from flask_socketio import SocketIO, join_room, emit
-import subprocess
 import os
 import json
 import random
 import base64
-import string
 from dictionary_helpers import *
+from dotenv import load_dotenv
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'password'
+load_dotenv()
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback_development_key')
 
 socketio = SocketIO(app, async_mode='gevent')
 

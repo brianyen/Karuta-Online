@@ -8,3 +8,4 @@ flask-socketio
 gevent 
 gevent-websocket
 mutagen
+dotenv

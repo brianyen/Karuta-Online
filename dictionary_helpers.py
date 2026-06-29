@@ -253,3 +253,4 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
             for id in room_entry["player_info"]:
                 room_dict["players"].pop(id, None)
             room_dict["rooms"].pop(room_code, None)
+            print(room_dict)
