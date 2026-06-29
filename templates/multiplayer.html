@@ -74,8 +74,8 @@
   <body>
     <h1>Karuta Room Code: {{ room }}</h1>
     <h2 id="deckDisplay"></h2>
-    <a href="/" onclick="return confirmNavigation()"><div id="go-home" class="navigation">Home</div></a>
-    <a href="/practice" onclick="return confirmNavigation()"><div id="go-practice" class="navigation">Practice</div></a>
+    <a href="/" onclick="return confirmNavigation(event)"><div id="go-home" class="navigation">Home</div></a>
+    <a href="/practice" onclick="return confirmNavigation(event)"><div id="go-practice" class="navigation">Practice</div></a>
     <hr></hr>
     <div id="game-header">
       <div id="readyDiv">
@@ -292,11 +292,16 @@
         tapOut();
       })
 
-      socket.on('game_finished', () => {
-        countdownEl.innerHTML = "Game is finished!";
+      socket.on('game_finished', (e) => {
+        if (e.winner === playerID) {
+          countdownEl.innerHTML = "Game is finished! You won.";
+        } else {
+          countdownEl.innerHTML = "Game is finished! You lost.";
+        }
         readyDivEl.style.display = 'none';
         tapoutDivEl.style.display = 'none';
         nextGameDivEl.style.display = 'block';
+        nextRoom = e.next_code;
       })
 
       socket.on('room_missing', () => [
@@ -494,6 +499,8 @@
       }
 
       function toggleReady() {
+        console.log("buffer")
+        console.log("toggle ready called!!!")
         let checkedStatus = !readyEl.checked;
         readyEl.checked = checkedStatus;
         if (checkedStatus) {
@@ -511,7 +518,17 @@
         tapoutEl.disabled = true;
       }
 
-      function confirmNavigation() {
+      function confirmNavigation(e) {
+        if (
+            e.ctrlKey ||    // Ctrl+click
+            e.metaKey ||    // Cmd+click (Mac)
+            e.shiftKey ||   // Shift+click
+            e.altKey ||     // Alt+click
+            e.button !== 0  // Middle/right click
+        ) {
+            return;
+        }
+
         res = confirm("Are you sure you want to leave the room?");
         if (res) {
           socket.emit('leave_room', { room: room_key, player_id: playerID });
