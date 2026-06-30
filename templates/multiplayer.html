@@ -20,12 +20,6 @@
         top: 30px;
         padding: 5px;
       }
-      #go-practice {
-        position: absolute;
-        right: 30px;
-        top: 30px;
-        padding: 5px;
-      }
       #game-header {
         display: flex;
       }
@@ -75,7 +69,6 @@
     <h1>Karuta Room Code: {{ room }}</h1>
     <h2 id="deckDisplay"></h2>
     <a href="/" onclick="return confirmNavigation(event)"><div id="go-home" class="navigation">Home</div></a>
-    <a href="/practice" onclick="return confirmNavigation(event)"><div id="go-practice" class="navigation">Practice</div></a>
     <hr></hr>
     <div id="game-header">
       <div id="readyDiv">
@@ -156,7 +149,6 @@
       });
 
       socket.on('2p_room', (e) => {
-        console.log("Status: 2p room")
         tapoutDivEl.style.display = "none";
         tapoutEl.disabled = false;
         correct = true;
@@ -172,23 +164,25 @@
         init = true;
       });
 
+      socket.on('start_sync', (e) => {
+        startSyncHandler(e)
+      });
+
       socket.on('start_playing', (e) => {
-        // show a 3 2 1 countdown
-        readyButtonEl.disabled = true;
-        countdown.innerHTML = "Round Starting in 3..."
+        countdown.innerHTML = "Round starting in 3...";
 
         setTimeout(() => {
-          countdown.innerHTML = "Round Starting in 2..."
+          countdown.innerHTML = "Round starting in 2..."
         }, 1000)
 
         setTimeout(() => {
-          countdown.innerHTML = "Round Starting in 1..."
+          countdown.innerHTML = "Round starting in 1..."
         }, 2000)
 
         setTimeout(() => {
           countdownEl.innerHTML = "Round Started"
           currentSong = e.song;
-          playSong(currentSong, e.start_time)
+          playSong(currentSong, e.start_time, e.audio_url)
           readyDivEl.style.display = 'none';
           readyEl.checked = false;
           tapoutDivEl.style.display = 'block';
@@ -202,7 +196,6 @@
 
       socket.on('round_results', (e) => {
         console.log("Handling round results")
-        console.log(e)
         let winner = e.winner;
         let remove = e.remove;
         let add = e.add;
@@ -259,7 +252,6 @@
 
       socket.on('fault_response', (e) => {
         console.log("Handling faults")
-        console.log(e)
         Object.keys(e.args).forEach(key => {
           if (key === playerID && e.args[key] == 1) { // needs to be card replacement later on
             updateLogs("FAULT: You faulted when " + currentSong + " was playing.");
@@ -275,11 +267,10 @@
       })
 
       socket.on('re_emission', (e) => {
-        console.log("entering re-emission")
+        console.log("Entering re-emission")
         if (init) {
           return;
         }
-        console.log("made it past if check")
         deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
         countdownEl.innerHTML = "Round Started"
         readyDivEl.style.display = 'none';
@@ -288,7 +279,7 @@
         correct = true;
         faulted = -1;
         answerEl.innerHTML = "Now playing..."
-        console.log("tapping out...")
+        socket.emit('sync_ready', { room: room_key, player_id: playerID })
         tapOut();
       })
 
@@ -312,32 +303,32 @@
         alert("issue while joining room, it may be full")
       })
 
-      function playSong(song, randomStart) {
-        let audioSource;
-        audioSource = "stored-songs/" + deck + "/" + encodeURIComponent(song);
-        audioPlayerEl.src = audioSource;
+      async function startSyncHandler(e) {
+        readyButtonEl.disabled = true;
+        countdown.innerHTML = "Syncing audio tracks..."
+        const response = await fetch(e.audio_url);
+        const blob = await response.blob();
+        const localAudioUrl = URL.createObjectURL(blob);
+        audioPlayerEl.src = localAudioUrl; 
         audioPlayerEl.load();
+        socket.emit('sync_ready', { room: room_key, player_id: playerID })
+      }
 
+      function playSong(song, randomStart) {
         function attemptPlayback() {
           audioPlayerEl.play().catch((error) => {
             console.warn("Playback failed (promise rejection), retrying...", error);
             setTimeout(attemptPlayback, 500);
           });
         }
+        audioPlayerEl.currentTime = randomStart;
 
-        function onCanPlayThrough() {
-          audioPlayerEl.removeEventListener("canplaythrough", onCanPlayThrough);
-
-          audioPlayerEl.currentTime = randomStart;
-
-          attemptPlayback();
+        attemptPlayback();
           
-          audioPlayerEl.onerror = function () {
-            console.warn("Audio error event fired, retrying playback...");
-            setTimeout(attemptPlayback, 500);
-          };
-        }
-        audioPlayerEl.addEventListener("canplaythrough", onCanPlayThrough);
+        audioPlayerEl.onerror = function () {
+          console.warn("Audio error event fired, retrying playback...");
+          setTimeout(attemptPlayback, 500);
+        };
       }
 
       function handleSongChoice(event) {
@@ -499,8 +490,6 @@
       }
 
       function toggleReady() {
-        console.log("buffer")
-        console.log("toggle ready called!!!")
         let checkedStatus = !readyEl.checked;
         readyEl.checked = checkedStatus;
         if (checkedStatus) {
@@ -511,7 +500,6 @@
       }
 
       function tapOut() {
-        console.log("in tap out...")
         correct = true;
         countdownEl.innerHTML = ("Waiting for round results...")
         socket.emit('player_response', { player_id: playerID, room: room_key, response_time: -2 })

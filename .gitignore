@@ -8,8 +8,6 @@ pyvenv.cfg
 lib/python3.12/site-packages
 playlist_videos.json
 progress.json
-playlists/*
-custom/*
 images/*
 stored-songs/*
 __pycache__/

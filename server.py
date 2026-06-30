@@ -13,10 +13,6 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback_development_ke
 
 socketio = SocketIO(app, async_mode='gevent')
 
-PROGRESS_FILE = "progress.json"
-MAPPING_FOLDER = "custom"
-IMAGE_FOLDER = "images"
-
 room_dict = {
   "rooms": {},
   "players": {},
@@ -29,7 +25,6 @@ def handle_connect():
 
 @socketio.on('join_game')
 def join_game(data):
-  print("about to join room")
   try:
     room_key = data.get('room')
     player_id = data.get('player_id')
@@ -53,7 +48,6 @@ def join_game(data):
       player_info = room_entry["player_info"]
       if player_id not in player_info:
         print("ATTENTION: player seems to be rejoining a room, but they're not in the room's player list")
-      print("join game erss rejoin")
       emit_room_status_switch(room_dict, room_key) 
     elif player_id in room_dict["players"]:
       # PLAYER EXISTS, MOVED ROOMS W/O DICT UPDATING (hopefully uncommon branch)
@@ -70,7 +64,6 @@ def join_game(data):
         print("ATTENTION: i think a player existed but not in the room the dict says they were....")
       if len(player_info) == 1:
         room_dict["rooms"][prev_room]["status"] = RoomState.GAME_FINISH
-        print("join game erss weird rejoin")
         emit_room_status_switch(room_dict, prev_room)
         
       add_player_to_room(room_dict, player_id, room_key, request)
@@ -83,7 +76,6 @@ def join_game(data):
 
 @socketio.on('leave_room')
 def leave_from_room(data):
-  print("leave room handler entered!!")
   player_id = data.get('player_id')
   room_key = data.get('room')
   try:
@@ -93,7 +85,6 @@ def leave_from_room(data):
 
 @socketio.on('disconnect')
 def disconnect_room(data):
-  print("disconnect room handler entered!!")
   # some integrity checks, hopefully these won't be needed...
   player_id = room_dict["players_sid"].get(request.sid)
   if player_id == None or player_id not in room_dict["players"]:
@@ -105,8 +96,9 @@ def disconnect_room(data):
   player_entry["status"] = PlayerState.DISCONNECT
   if player_entry["ready"]:
     player_entry["ready"] = False
-    room_dict["rooms"][player_entry["room_code"]]["ready_count"] -= 1
-    if (room_dict["rooms"][player_entry["room_code"]]["ready_count"] < 0):
+    room_entry = room_dict["rooms"][player_entry["room_code"]]
+    room_entry["ready_count"] -= 1
+    if (room_entry["ready_count"] < 0):
       print("ATTENTION: READY COUNT IN THE NEGATIVES")
   handle_disconnect_timer(socketio, room_dict, player_id, player_entry["room_code"])
 
@@ -117,7 +109,6 @@ def player_ready(data):
   player_entry = room_dict["players"][player_id]
   room_entry = room_dict["rooms"][room_key]
 
-  print(room_entry["status"])
   if room_entry["status"] != RoomState.LOBBY_2P and room_entry["status"] != RoomState.LOBBY_1P:
     return
 
@@ -127,14 +118,33 @@ def player_ready(data):
     if (room_entry["ready_count"] > 2):
       print("ATTENTION: READY COUNT > 3")
 
-  print("ready_count:", room_entry["ready_count"])
   if (room_entry["ready_count"] == 2):
     song_choice(room_dict, player_id, room_key)
   return
 
+@socketio.on('sync_ready')
+def sync_ready(data):
+  player_id = data.get('player_id')
+  room_key = data.get('room')
+  player_entry = room_dict["players"][player_id]
+  room_entry = room_dict["rooms"][room_key]
+
+  if room_entry["status"] != RoomState.STARTED_SYNC:
+    return
+  
+  if not player_entry["sync_ready"]:
+    room_entry["sync_count"] += 1
+    player_entry["sync_ready"] = True
+  if room_entry["sync_count"] == 2:
+    room_entry["status"] = RoomState.STARTED_SONG
+    room_entry["sync_count"] = 0
+    next_song = room_entry["current_song"]
+    half_duration = room_entry["metadata"]["durations"][next_song] / 2
+    start_time = random.randint(0, round(half_duration))
+    emit('start_playing', { "song": next_song, "start_time": start_time }, to=room_key)
+
 @socketio.on('player_response')
 def player_response(data):
-  print("entering player response handler")
   player_id = data.get('player_id')
   room_key = data.get('room')
   response_time = data.get('response_time')
@@ -150,33 +160,25 @@ def player_response(data):
   if response_time < 0: # tapped out
     player_entry["response_time"] == -2
     if other_response_time == -2: # other player tapped out
-      print("both tapped out")
       pass_song(room_dict, player_id, room_key)
     elif other_response_time == -1: # still waiting on other player
-      print("one tapped out")
       return
     elif other_response_time >= 0: # other player got the song
-      print("one tapped out after other got song")
       declare_round_winner(room_dict, other_player_id, room_key)
     else:
       print("ATTENTION: tracked player response time is negative number besides -1, -2")
   else: # got the card
     player_entry["response_time"] == response_time
     if other_response_time == -2: # other player tapped out
-      print("got song while other tapped out")
       declare_round_winner(room_dict, player_id, room_key)
     elif other_response_time == -1: # still waiting on other player
-      print("got song")
       handle_card_buffer(socketio, room_dict, player_id, room_key)
     elif other_response_time >= 0: # other player got the song
       if other_response_time > response_time:
-        print("got song faster")
         declare_round_winner(room_dict, player_id, room_key)
       elif other_response_time < response_time:
-        print("got song slower")
         declare_round_winner(room_dict, other_player_id, room_key)
       elif other_response_time == response_time:
-        print("got song at a tie")
         declare_round_winner(room_dict, random.choice([player_id, other_player_id]), room_key)
       else:
         print("ATTENTION: how did we even reach this branch man. response time might be none or something idk")
@@ -246,11 +248,8 @@ def handle_faults(data):
   elif other_player_entry["cards_left"] == 0:
     declare_game_winner(room_dict, other_player_id, room_key)
   else:
-    print("swapping to lobby 2p (handle faults)")
     room_entry["status"] = RoomState.LOBBY_2P
-    print("from handle faults, emitting fault response")
     emit('fault_response', {"args": fault_args}, to=room_key)
-    print("handle faults erss")
     emit_room_status_switch(room_dict, room_key)
 
 @app.route('/')
@@ -311,11 +310,6 @@ def join_room_rq():
     print(e)
     return jsonify({"error": str(e)}), 500
 
-@app.route('/stored-songs/<deckname>/<filename>')
-def serve_audio_deck(deckname, filename):
-  print("serving audio now...")
-  return send_file(os.path.join(SONGS_FOLDER, deckname, filename))
-
 @app.route('/get-playlists', methods=['GET'])
 def get_playlists():
   if not os.path.exists("playlists"):
@@ -339,8 +333,6 @@ def load_playlist():
 def get_custom_mapping():
   filename = request.args.get("filename")
   path = os.path.join(MAPPING_FOLDER, filename)
-
-  print(path)
   
   if os.path.exists(path):
     with open(path, "r") as f:
@@ -350,23 +342,16 @@ def get_custom_mapping():
 @app.route('/get-images', methods=['GET'])
 def get_custom_images():
   filename = request.args.get("filename")
-  path = os.path.join(IMAGE_FOLDER, filename)
   out = {}
 
-  if not os.path.isdir(IMAGE_FOLDER):
-      os.mkdir(IMAGE_FOLDER)
-  if not os.path.isdir(path):
-    os.mkdir(path)
-  for file in os.listdir(path):
-    file_path = os.path.join(path, file)
-    with open(file_path, "rb") as f:
-      encoded = base64.b64encode(f.read()).decode('utf-8')
-      ext = path.split('.')[-1]
-      out[file[:file.rfind('.')]] = f"data:image/{ext};base64,{encoded}"
-  try:
-    return jsonify(out)
-  except Exception as e:
-    return jsonify({"error": str(e)}), 500
+  with open(os.path.join(METADATA_FOLDER, filename), 'r') as f:
+    data = json.load(f)
+    if data.get("hasImages") == None or not data.get("hasImages"):
+      return jsonify({"error": "no images"})
+    for song_name in data["durations"].keys():
+      out[song_name] = os.path.join(BUCKET_URL, IMAGE_FOLDER, filename, ".jpg")
+
+  return jsonify(out)
 
 if __name__ == '__main__':
   socketio.run(app, debug=True)

@@ -9,14 +9,20 @@ from mutagen import File
 from pathlib import Path
 
 SONGS_FOLDER = "stored-songs"
+METADATA_FOLDER = "metadata"
+MAPPING_FOLDER = "custom"
+IMAGE_FOLDER = "images"
+BUCKET_URL = "https://pub-c4ee81f16b2e4a419b935403abc40d56.r2.dev"
+
 LETTERS = string.ascii_letters
 
 class RoomState(Enum):
   LOBBY_1P = 1 # 1 player waiting for 2nd to join
   LOBBY_2P = 2 # 2 players, server waiting for both to be ready
-  STARTED_SONG = 3
-  RESULTS_SENT = 4
-  GAME_FINISH = 5
+  STARTED_SYNC = 3
+  STARTED_SONG = 4
+  RESULTS_SENT = 5
+  GAME_FINISH = 6
 
 class PlayerState(Enum):
   CONNECT = 1
@@ -35,54 +41,42 @@ def add_player_to_room(room_dict, player_id, room_code, request):
         "status": PlayerState.CONNECT,
         "room_code": room_code,
         "ready": False,
+        "sync_ready": False,
         # "cards": [],
         "cards_left": len(room_entry["available_songs"]) // 2,
         "response_time": -1,
-        "fault_status": 0
+        "fault_status": 0,
     }
     room_dict["players_sid"][request.sid] = player_id
     join_room(room_code)
     if len(player_info) == 1: # temporary state stuff
         room_entry["status"] = RoomState.LOBBY_1P
     if len(player_info) == 2 and room_entry["status"] == RoomState.LOBBY_1P:
-        print("swapping to 2p status")
         room_entry["status"] = RoomState.LOBBY_2P
-    print("add player erss")
     emit_room_status_switch(room_dict, room_code)
 
 def remove_player_from_room(room_dict, player_id, room_code):
     # remove the client from the room and room entry
-    print("remove player from room entered")
     player_info = room_dict["rooms"][room_code]["player_info"]
     player_entry = room_dict["players"][player_id]
     leave_room(room_code)
     if player_id in player_info:
-        print("b1")
         player_info.remove(player_id)
 
     if player_entry["ready"]:
-        print("b2")
         room_dict["rooms"][room_code]["ready_count"] -= 1
         if (room_dict["rooms"][room_code]["ready_count"] < 0):
             print("ATTENTION: READY COUNT IN THE NEGATIVES")
     if (len(player_info)) == 1: # 1 player left, they won
-        print("b3")
         room_dict["rooms"][room_code]["status"] = RoomState.GAME_FINISH
-        print("remov player erss")
         emit_room_status_switch(room_dict, room_code)
     if (len(player_info)) == 0: # no players left, delete the room entry
-        print("b4")
         room_dict["rooms"].pop(room_code, None)
 
-    print("b5")
-
-
     # remove the player/rev index entries from dict
-    print("clearing entries from player (leave room)")
     sid = player_entry["sid"]
     room_dict["players_sid"].pop(sid, None)
     room_dict["players"].pop(player_id, None)
-    print("checking entry after removing:", room_dict["players"].get(player_id))
     
 def handle_disconnect_timer(socketio, room_dict, player_id, room_code):
     # in theory the player status should have just been set to disconnect. 
@@ -98,29 +92,19 @@ def song_choice(room_dict, player_id, room_code, from_join=False):
     if len(room_entry["unplayed_songs"]) == 0:
         # hopefully doesn't happen too often (can happen if both players tap out, i guess)
         room_entry["status"] = RoomState.GAME_FINISH
-        print("song choice erss")
         emit_room_status_switch(room_dict, room_code)
     next_song = room_entry["all_songs"].pop(random.randint(0, len(room_entry["all_songs"]) - 1))
-    print("song choice: swapping state to started song")
-    room_entry["status"] = RoomState.STARTED_SONG
+    room_entry["status"] = RoomState.STARTED_SYNC
     room_entry["ready_count"] = 0
     room_entry["current_song"] = next_song
-
-    deck_stem = Path(room_entry["deck_name"]).stem
-    audio_file = File(os.path.join(SONGS_FOLDER, deck_stem, next_song))
-    if audio_file is None or audio_file.info is None:
-        print("ATTENTION: couldn't get an actual audio file out of the path", os.path.join(SONGS_FOLDER, deck_stem, next_song))
     
-    half_duration = audio_file.info.length / 2
-    start_time = random.randint(0, round(half_duration))
-
     reset_players(room_dict, room_code)
+    deckstem = Path(room_entry["deck_name"]).stem
 
-    emit('start_playing', { "song": next_song, "start_time": start_time }, to=room_code)
+    emit('start_sync', { "audio_url": os.path.join(BUCKET_URL, SONGS_FOLDER, deckstem, next_song) }, to=room_code)
 
 def pass_song(room_dict, player_id, room_code):
     # switch this part to looking through each player's array to find the song. for now, sides dont exist so just look through "available_songs"
-    print("in pass song")
     room_entry = room_dict["rooms"][room_code]
     current_song = room_entry["current_song"]
     available_songs = room_entry["available_songs"]
@@ -135,14 +119,12 @@ def pass_song(room_dict, player_id, room_code):
             available_songs.append(next_song)
             update["add"] = next_song
 
-    print('from pass song, emitting round results')
     emit("round_results", update, to=room_code)
     room_entry["status"] = RoomState.RESULTS_SENT
     room_entry["current_song"] = ""
     reset_players(room_dict, room_code)
 
 def declare_round_winner(room_dict, player_id, room_code):
-    print("in declare round winner")
     room_entry = room_dict["rooms"][room_code]
     current_song = room_entry["current_song"]
     player_entry = room_dict["players"][player_id]
@@ -155,7 +137,6 @@ def declare_round_winner(room_dict, player_id, room_code):
     else: 
         print("ATTENTION: round was won on some song but it's no longer in the dictionary's available songs")
 
-    print("from round winner, emitting round results")
     emit("round_results", update, to=room_code)
     room_entry["status"] = RoomState.RESULTS_SENT
     room_entry["current_song"] = ""
@@ -164,7 +145,6 @@ def declare_round_winner(room_dict, player_id, room_code):
 
 def declare_game_winner(room_dict, player_id, room_code):
     room_dict["rooms"][room_code]["status"] = RoomState.GAME_FINISH
-    print("game winner erss")
     emit_room_status_switch(room_dict, room_code, winner=player_id)
     return
 
@@ -193,6 +173,7 @@ def reset_players(room_dict, room_code):
     for pid in room_entry["player_info"]:
         player_entry = room_dict["players"][pid]
         player_entry["ready"] = False
+        player_entry["sync_ready"] = False
         player_entry["response_time"] = -1
         player_entry["fault_status"] = 0
 
@@ -211,8 +192,14 @@ def init_room(room_dict, room_code, deck):
       "available_songs": all_songs[:(len(all_songs) // 4) * 2], # replace with per-playing tracking eventually
       "unplayed_songs": all_songs[(len(all_songs) // 4) * 2:],
       "ready_count": 0,
+      "sync_count": 0,
       "current_song": ""
     }
+
+    with open(os.path.join(METADATA_FOLDER, deck), 'r') as f:
+        metadata = json.load(f)
+        room_dict["rooms"][room_code]["metadata"] = metadata
+
     return jsonify({ "url": f"/multiplayer?room={room_code}"})
 
 def emit_room_status_switch(room_dict, room_code, winner=""):
@@ -228,19 +215,17 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
 
     match room_entry["status"]:
         case RoomState.LOBBY_1P:
-            print("from emit room status switch, emiting 1p room")
             emit('1p_room', send_params, to=room_code)
             return
         case RoomState.LOBBY_2P:
-            print("from emit room status switch, emiting 2p room")
             emit('2p_room', send_params, to=room_code)
             return
+        case RoomState.STARTED_SYNC:
+            emit('re_emission', send_params, to=room_code)
         case RoomState.STARTED_SONG:
-            print("from emit room status switch, emiting re_esmission")
             emit('re_emission', send_params, to=room_code)
             return
         case RoomState.RESULTS_SENT:
-            print("from emit room status switch, emiting re_esmission")
             emit('re_emission', send_params, to=room_code)
             return
         case RoomState.GAME_FINISH:
@@ -253,4 +238,4 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
             for id in room_entry["player_info"]:
                 room_dict["players"].pop(id, None)
             room_dict["rooms"].pop(room_code, None)
-            print(room_dict)
+            print("Room dict:", room_dict)
