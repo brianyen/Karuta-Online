@@ -94,6 +94,7 @@ def song_choice(room_dict, player_id, room_code, from_join=False):
         room_entry["status"] = RoomState.GAME_FINISH
         emit_room_status_switch(room_dict, room_code)
     next_song = room_entry["all_songs"].pop(random.randint(0, len(room_entry["all_songs"]) - 1))
+    room_entry["unplayed_songs"].pop(next_song, None)
     room_entry["status"] = RoomState.STARTED_SYNC
     room_entry["ready_count"] = 0
     room_entry["current_song"] = next_song
@@ -238,4 +239,5 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
             for id in room_entry["player_info"]:
                 room_dict["players"].pop(id, None)
             room_dict["rooms"].pop(room_code, None)
-            print("Room dict:", room_dict)
+            print("Room dict room info:", room_dict["rooms"].keys())
+            print("Room dict player info:", room_dict["players"].keys())

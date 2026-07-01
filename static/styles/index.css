@@ -1,0 +1,22 @@
+#go-home {
+    position: absolute;
+    right: 100px;
+    top: 30px;
+    padding: 5px;
+}
+#go-edit {
+    position: absolute;
+    right: 170px;
+    top: 30px;
+    padding: 5px;
+}
+.navigation:hover {
+    background-color: lightblue;
+    cursor: default;
+    color: black;
+    text-decoration: none;
+}
+.resize {
+    resize: both;
+    overflow: auto;
+}

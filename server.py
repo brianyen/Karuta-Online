@@ -349,7 +349,7 @@ def get_custom_images():
     if data.get("hasImages") == None or not data.get("hasImages"):
       return jsonify({"error": "no images"})
     for song_name in data["durations"].keys():
-      out[song_name] = os.path.join(BUCKET_URL, IMAGE_FOLDER, filename, ".jpg")
+      out[song_name] = os.path.join(BUCKET_URL, IMAGE_FOLDER, filename, song_name + ".jpg")
 
   return jsonify(out)
 
