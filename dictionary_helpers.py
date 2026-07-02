@@ -7,6 +7,7 @@ from flask_socketio import join_room, leave_room, emit
 from enum import Enum
 from mutagen import File
 from pathlib import Path
+from urllib.parse import quote
 
 SONGS_FOLDER = "stored-songs"
 METADATA_FOLDER = "metadata"
@@ -103,7 +104,7 @@ def song_choice(room_dict, player_id, room_code, from_join=False):
     reset_players(room_dict, room_code)
     deckstem = Path(room_entry["deck_name"]).stem
 
-    emit('start_sync', { "audio_url": os.path.join(BUCKET_URL, SONGS_FOLDER, deckstem, next_song) }, to=room_code)
+    emit('start_sync', { "audio_url": os.path.join(BUCKET_URL, SONGS_FOLDER, deckstem, quote(next_song)) }, to=room_code)
 
 def pass_song(room_dict, player_id, room_code):
     # switch this part to looking through each player's array to find the song. for now, sides dont exist so just look through "available_songs"
