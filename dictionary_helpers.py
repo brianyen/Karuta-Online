@@ -89,7 +89,7 @@ def handle_disconnect_timer(socketio, room_dict, player_id, room_code):
 
 def song_choice(room_dict, player_id, room_code, from_join=False):
     room_entry = room_dict["rooms"][room_code]
-    if len(room_entry["unplayed_songs"]) == 0:
+    if len(room_entry["all_songs"]) == 0:
         # hopefully doesn't happen too often (can happen if both players tap out, i guess)
         room_entry["status"] = RoomState.GAME_FINISH
         emit_room_status_switch(room_dict, room_code)
@@ -174,7 +174,7 @@ def handle_card_buffer(socketio, room_dict, player_id, room_code):
         declare_round_winner(room_dict, other_player_id, room_code)
 
 def reset_players(room_dict, room_code):
-    room_entry = room_dict["rooms"][room_code]
+    room_entry = room_dict["rooms"].get(room_code)
     for pid in room_entry["player_info"]:
         player_entry = room_dict["players"][pid]
         player_entry["ready"] = False

@@ -108,15 +108,26 @@ socket.on('round_results', (e) => {
     countdownEl.innerHTML = "Round is finished"
     answerEl.innerHTML = "Song name: " + currentSong;
 
+    console.log("=== buffer ===")
+    console.log("winner:", winner)
+    console.log("remove:", remove)
+    console.log("add:", add)
+    console.log("target:", target)
     if (target != null && winner === "") {
+        console.log("entering add next card")
         addNextCard(target, add, faultParams).then((res) => {
             if (!res) {
+                console.log("add next card returned false")
                 target.removeEventListener("click", handleSongChoice);
                 target.innerHTML = "";
                 target.style.borderColor = "white";
+                target.style.cursor = "auto";
+                target.id = "";
+                target.draggable = false;
             }
         });
     } else if (target != null) {
+        console.log("target was null")
         target.removeEventListener("click", handleSongChoice);
         target.innerHTML = "";
         target.style.borderColor = "white";
@@ -271,6 +282,7 @@ function addNextCard(toReplace = null, nextCardTitle = null, faultParams = {}) {
     return new Promise((resolve) => {
         if (nextCardTitle === "") {
             resolve(false);
+            return;
         }
 
         toReplace.style.outline = "4px solid red";
