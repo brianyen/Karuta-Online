@@ -117,7 +117,7 @@ def pass_song(room_dict, player_id, room_code):
     if current_song in available_songs: # need to reroll
         update["remove"] = current_song
         available_songs.remove(current_song)
-        if len(unplayed_songs) > 1: # at least one dead song exists, add it
+        if len(unplayed_songs) >= 1: # at least one dead song exists, add it
             next_song = unplayed_songs.pop(0)
             available_songs.append(next_song)
             update["add"] = next_song

@@ -124,6 +124,9 @@ socket.on('round_results', (e) => {
                 target.style.cursor = "auto";
                 target.id = "";
                 target.draggable = false;
+                ownScore--;
+                otherScore--;
+                updateScores();
             }
         });
     } else if (target != null) {
