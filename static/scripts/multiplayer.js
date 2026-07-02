@@ -123,20 +123,22 @@ socket.on('round_results', (e) => {
     }
 
     socket.emit('fault_msg', faultParams);
+    let displayTitle = mapping[currentSong] || currentSong;
     if (winner === playerID) {
         ownScore--;
-        updateLogs("RESULT: You won the card " + currentSong);
+        updateLogs("RESULT: You won the card " + displayTitle);
     } else if (winner === "") {
         if (remove != "" && add != "") {
-            updateLogs("REROLL: You rerolled " + currentSong + " into " + add);
+            let addDisplayTitle = mapping[add] || add;
+            updateLogs("REROLL: You rerolled " + displayTitle + " into " + addDisplayTitle);
         } else if (remove != "") {
-            updateLogs("REROLL: You rerolled " + currentSong + " with no dead cards remaining");
+            updateLogs("REROLL: You rerolled " + displayTitle + " with no dead cards remaining");
         } else {
-            updateLogs("DEAD CARD: " + currentSong);
+            updateLogs("DEAD CARD: " + displayTitle);
         }
     } else {
         otherScore--;
-        updateLogs("RESULT: Opponent won the card " + currentSong);
+        updateLogs("RESULT: Opponent won the card " + displayTitle);
     }
 
     wrongCards.forEach(card => {
@@ -348,7 +350,7 @@ function createCardElement(songTitle) {
             songCard.style.outline = "";
             songCard.style.outlineOffset = "";
 
-            if (dragged.id != event.target.id) {
+            if (dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id) {
                 let dummy = createCardElement("");
                 gameSpaceEl.replaceChild(dummy, dragged);
                 gameSpaceEl.replaceChild(dragged, songCard);

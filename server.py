@@ -243,9 +243,9 @@ def handle_faults(data):
       print("ATTENTION: bad fault status 3:", fault_status, other_fault_status)
 
   # need to check if there's a winner after faults
-  if player_entry["cards_left"] == 0:
+  if player_entry["cards_left"] <= 0:
     declare_game_winner(room_dict, player_id, room_key)
-  elif other_player_entry["cards_left"] == 0:
+  elif other_player_entry["cards_left"] <= 0:
     declare_game_winner(room_dict, other_player_id, room_key)
   else:
     room_entry["status"] = RoomState.LOBBY_2P
