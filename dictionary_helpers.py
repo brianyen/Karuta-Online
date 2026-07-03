@@ -13,7 +13,7 @@ SONGS_FOLDER = "stored-songs"
 METADATA_FOLDER = "metadata"
 MAPPING_FOLDER = "custom"
 IMAGE_FOLDER = "images"
-BUCKET_URL = "https://pub-c4ee81f16b2e4a419b935403abc40d56.r2.dev"
+BUCKET_URL = "https://karuta-worker.workers-larp2011.workers.dev"
 
 LETTERS = string.ascii_letters
 
@@ -244,5 +244,3 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
             for id in room_entry["player_info"]:
                 room_dict["players"].pop(id, None)
             room_dict["rooms"].pop(room_code, None)
-            print("Room dict room info:", room_dict["rooms"].keys())
-            print("Room dict player info:", room_dict["players"].keys())
