@@ -92,14 +92,15 @@ def remove_player_from_room(room_dict, player_id, room_code):
     if re_emit:
         emit_room_status_switch(room_dict, room_code)
     
-def handle_disconnect_timer(socketio, room_dict, player_id, room_code):
+def handle_disconnect_timer(socketio, room_dict, player_id, room_code, sid):
     # in theory the player status should have just been set to disconnect. 
     # if after 60s the player is still disconnected remove them as if they left
     socketio.sleep(60)
     player_entry = room_dict["players"].get(player_id)
 
     if player_entry and player_entry["status"] == PlayerState.DISCONNECT and room_code == player_entry["room_code"]:
-        remove_player_from_room(room_dict, player_id, room_code)
+        if sid != room_dict["players_sid"][player_id]:
+            remove_player_from_room(room_dict, player_id, room_code)
 
 def song_choice(room_dict, player_id, room_code, from_join=False):
     room_entry = room_dict["rooms"][room_code]
