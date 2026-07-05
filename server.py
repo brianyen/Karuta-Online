@@ -57,13 +57,17 @@ def join_game(data):
       prev_room = player_entry["room_code"]
 
       # if in old room, this player was the last one then handle appropriately
-      player_info = room_dict["rooms"][prev_room]["player_info"]
-      if player_id in player_info:
-        player_info.remove(player_id)
-      else:
-        print("ATTENTION: i think a player existed but not in the room the dict says they were....")
-      if len(player_info) == 1:
-        room_dict["rooms"][prev_room]["status"] = RoomState.GAME_FINISH
+      re_emit = False
+      with room_dict["rooms"][prev_room]["lock"]:
+        player_info = room_dict["rooms"][prev_room]["player_info"]
+        if player_id in player_info:
+          player_info.remove(player_id)
+        else:
+          print("ATTENTION: i think a player existed but not in the room the dict says they were....")
+        if len(player_info) == 1:
+          room_dict["rooms"][prev_room]["status"] = RoomState.GAME_FINISH
+          re_emit = True
+      if re_emit:
         emit_room_status_switch(room_dict, prev_room)
         
       add_player_to_room(room_dict, player_id, room_key, request)
@@ -97,9 +101,10 @@ def disconnect_room(data):
   if player_entry["ready"]:
     player_entry["ready"] = False
     room_entry = room_dict["rooms"][player_entry["room_code"]]
-    room_entry["ready_count"] -= 1
-    if (room_entry["ready_count"] < 0):
-      print("ATTENTION: READY COUNT IN THE NEGATIVES")
+    with room_entry["lock"]:
+      room_entry["ready_count"] -= 1
+      if (room_entry["ready_count"] < 0):
+        print("ATTENTION: READY COUNT IN THE NEGATIVES")
   handle_disconnect_timer(socketio, room_dict, player_id, player_entry["room_code"])
 
 @socketio.on('player_ready')
@@ -109,16 +114,21 @@ def player_ready(data):
   player_entry = room_dict["players"][player_id]
   room_entry = room_dict["rooms"][room_key]
 
-  if room_entry["status"] != RoomState.LOBBY_2P and room_entry["status"] != RoomState.LOBBY_1P:
-    return
+  emit_song = False
+  with room_entry["lock"]:
+    if room_entry["status"] != RoomState.LOBBY_2P and room_entry["status"] != RoomState.LOBBY_1P:
+      return
 
-  if not player_entry["ready"]:
-    player_entry["ready"] = True
-    room_entry["ready_count"] += 1
-    if (room_entry["ready_count"] > 2):
-      print("ATTENTION: READY COUNT > 3")
+    if not player_entry["ready"]:
+      player_entry["ready"] = True
+      room_entry["ready_count"] += 1
+      if (room_entry["ready_count"] > 2):
+        print("ATTENTION: READY COUNT > 3")
 
-  if (room_entry["ready_count"] == 2):
+    if room_entry["ready_count"] == 2:
+      emit_song = True
+
+  if emit_song:
     song_choice(room_dict, player_id, room_key)
   return
 
@@ -129,62 +139,102 @@ def sync_ready(data):
   player_entry = room_dict["players"][player_id]
   room_entry = room_dict["rooms"][room_key]
 
-  if room_entry["status"] != RoomState.STARTED_SYNC:
-    return
-  
-  if not player_entry["sync_ready"]:
-    room_entry["sync_count"] += 1
-    player_entry["sync_ready"] = True
-  if room_entry["sync_count"] == 2:
-    room_entry["status"] = RoomState.STARTED_SONG
-    room_entry["sync_count"] = 0
-    next_song = room_entry["current_song"]
-    half_duration = room_entry["metadata"]["durations"][next_song] / 2
-    start_time = random.randint(0, round(half_duration))
+  start_playing = False
+  with room_entry["lock"]:
+    if room_entry["status"] != RoomState.STARTED_SYNC:
+      return
+    
+    if not player_entry["sync_ready"]:
+      room_entry["sync_count"] += 1
+      player_entry["sync_ready"] = True
+    if room_entry["sync_count"] == 2:
+      room_entry["status"] = RoomState.STARTED_SONG
+      room_entry["sync_count"] = 0
+      next_song = room_entry["current_song"]
+      half_duration = room_entry["metadata"]["durations"][next_song] / 2
+      start_time = random.randint(0, round(half_duration))
+      start_playing = True
+  if start_playing:
     emit('start_playing', { "song": next_song, "start_time": start_time }, to=room_key)
 
 @socketio.on('player_response')
 def player_response(data):
   player_id = data.get('player_id')
   room_key = data.get('room')
-  response_time = data.get('response_time')
-  player_entry = room_dict["players"][player_id]
   room_entry = room_dict["rooms"][room_key]
 
-  other_player_id = [id for id in room_entry["player_info"] if id != player_id][0]
-  other_player_entry = room_dict["players"][other_player_id]
-  other_response_time = other_player_entry["response_time"]
+  class Callback(Enum):
+    WAITING = 0
+    PASS = 1
+    WINNER = 2
+    BUFFER = 3
+    ERROR = 4
 
-  player_entry["response_time"] = response_time
+  winner_id = ""
+  error_string = ""
+  callback = Callback.WAITING
 
-  if response_time < 0: # tapped out
-    player_entry["response_time"] == -2
-    if other_response_time == -2: # other player tapped out
-      pass_song(room_dict, player_id, room_key)
-    elif other_response_time == -1: # still waiting on other player
-      return
-    elif other_response_time >= 0: # other player got the song
-      declare_round_winner(room_dict, other_player_id, room_key)
-    else:
-      print("ATTENTION: tracked player response time is negative number besides -1, -2")
-  else: # got the card
-    player_entry["response_time"] == response_time
-    if other_response_time == -2: # other player tapped out
-      declare_round_winner(room_dict, player_id, room_key)
-    elif other_response_time == -1: # still waiting on other player
-      handle_card_buffer(socketio, room_dict, player_id, room_key)
-    elif other_response_time >= 0: # other player got the song
-      if other_response_time > response_time:
-        declare_round_winner(room_dict, player_id, room_key)
-      elif other_response_time < response_time:
-        declare_round_winner(room_dict, other_player_id, room_key)
-      elif other_response_time == response_time:
-        declare_round_winner(room_dict, random.choice([player_id, other_player_id]), room_key)
+  with room_entry["lock"]:
+    response_time = data.get('response_time')
+    player_entry = room_dict["players"][player_id]
+
+    other_player_id = [id for id in room_entry["player_info"] if id != player_id][0]
+    other_player_entry = room_dict["players"][other_player_id]
+    other_response_time = other_player_entry["response_time"]
+
+    player_entry["response_time"] = response_time
+
+    if response_time < 0: # tapped out
+      player_entry["response_time"] == -2
+      if other_response_time == -2: # other player tapped out
+        callback = Callback.PASS
+      elif other_response_time == -1: # still waiting on other player
+        return
+      elif other_response_time >= 0: # other player got the song
+        callback = Callback.WINNER
+        winner_id = other_player_id
       else:
-        print("ATTENTION: how did we even reach this branch man. response time might be none or something idk")
-    else:
-      print("ATTENTION: tracked player response time is negative number besides -1, -2")
-  return
+        callback = Callback.ERROR
+        error_string = "ATTENTION: tracked player response time is negative number besides -1, -2"
+    else: # got the card
+      player_entry["response_time"] == response_time
+      if other_response_time == -2: # other player tapped out
+        callback = Callback.WINNER
+        winner_id = player_id
+      elif other_response_time == -1: # still waiting on other player
+        callback = Callback.BUFFER
+      elif other_response_time >= 0: # other player got the song
+        if other_response_time > response_time:
+          callback = Callback.WINNER
+          winner_id = player_id
+        elif other_response_time < response_time:
+          callback = Callback.WINNER
+          winner_id = other_player_id
+        elif other_response_time == response_time:
+          callback = Callback.WINNER
+          winner_id = random.choice([player_id, other_player_id])
+        else:
+          callback = Callback.ERROR
+          error_string = "ATTENTION: how did we even reach this branch man. response time might be none or something idk"
+      else:
+        callback = Callback.ERROR
+        error_string = "ATTENTION: tracked player response time is negative number besides -1, -2"
+
+  match callback:
+    case Callback.WAITING:
+      print("Attention: Waiting callback somehow made it through instead of returning")
+      return
+    case Callback.PASS:
+      pass_song(room_dict, player_id, room_key)
+      return
+    case Callback.WINNER:
+      declare_round_winner(room_dict, winner_id, room_key)
+      return
+    case Callback.BUFFER:
+      handle_card_buffer(socketio, room_dict, player_id, room_key)
+      return
+    case Callback.ERROR:
+      print(error_string)
 
 @socketio.on('player_unready')
 def player_unready(data):
@@ -193,64 +243,70 @@ def player_unready(data):
   player_entry = room_dict["players"][player_id]
   room_entry = room_dict["rooms"][room_key]
 
-  if player_entry["ready"]:
-    player_entry["ready"] = False
-    room_entry["ready_count"] -= 1
-    if (room_entry["ready_count"] < 0):
-      print("ATTENTION: READY COUNT IN THE NEGATIVES")
+  with room_entry["lock"]:
+    if player_entry["ready"]:
+      player_entry["ready"] = False
+      room_entry["ready_count"] -= 1
+      if (room_entry["ready_count"] < 0):
+        print("ATTENTION: READY COUNT IN THE NEGATIVES")
   return
 
 @socketio.on('fault_msg')
 def handle_faults(data):
   player_id = data.get('player_id')
   room_key = data.get('room')
-  fault_status = data.get('fault_status')
-  player_entry = room_dict["players"].get(player_id)
   room_entry = room_dict["rooms"].get(room_key)
 
-  if player_entry == None or room_entry == None:
-    # hopefully only activates in special cases (game is over, some weird disconnection)
-    return
+  winner_id = ""
+  with room_entry["lock"]:
+    fault_status = data.get('fault_status')
+    player_entry = room_dict["players"].get(player_id)
 
-  other_player_id = [id for id in room_entry["player_info"] if id != player_id][0]
-  other_player_entry = room_dict["players"][other_player_id]
-  other_fault_status = other_player_entry["fault_status"]
+    if player_entry == None or room_entry == None:
+      # hopefully only activates in special cases (game is over, some weird disconnection)
+      return
 
-  fault_args = { player_id: 0, other_player_id: 0 }
+    other_player_id = [id for id in room_entry["player_info"] if id != player_id][0]
+    other_player_entry = room_dict["players"][other_player_id]
+    other_fault_status = other_player_entry["fault_status"]
 
-  if other_fault_status == 0:
-    player_entry["fault_status"] = fault_status
-  else:
-    if other_fault_status == -1:
-      if fault_status == -1:
-        pass
-      elif fault_status == 1:
-        fault_args[player_id] = 1
-        player_entry["cards_left"] += 1
-        other_player_entry["cards_left"] -= 1
-      else:
-        print("ATTENTION: bad fault status 1", fault_status, other_fault_status)
-    elif other_fault_status == 1:
-      fault_args[other_player_id] = 1
-      if fault_status == -1:
-        player_entry["cards_left"] -= 1
-        other_player_entry["cards_left"] += 1
-      elif fault_status == 1:
-        fault_args[player_id] = 1
-      else:
-        print("ATTENTION: bad fault status 2:", fault_status, other_fault_status)
+    fault_args = { player_id: 0, other_player_id: 0 }
+
+    if other_fault_status == 0:
+      player_entry["fault_status"] = fault_status
     else:
-      print("ATTENTION: bad fault status 3:", fault_status, other_fault_status)
+      if other_fault_status == -1:
+        if fault_status == -1:
+          pass
+        elif fault_status == 1:
+          fault_args[player_id] = 1
+          player_entry["cards_left"] += 1
+          other_player_entry["cards_left"] -= 1
+        else:
+          print("ATTENTION: bad fault status 1", fault_status, other_fault_status)
+      elif other_fault_status == 1:
+        fault_args[other_player_id] = 1
+        if fault_status == -1:
+          player_entry["cards_left"] -= 1
+          other_player_entry["cards_left"] += 1
+        elif fault_status == 1:
+          fault_args[player_id] = 1
+        else:
+          print("ATTENTION: bad fault status 2:", fault_status, other_fault_status)
+      else:
+        print("ATTENTION: bad fault status 3:", fault_status, other_fault_status)
+  
+    if player_entry["cards_left"] <= 0:
+      winner_id = player_id
+    elif other_player_entry["cards_left"] <= 0:
+      winner_id = other_player_id
 
-  # need to check if there's a winner after faults
-  if player_entry["cards_left"] <= 0:
-    declare_game_winner(room_dict, player_id, room_key)
-  elif other_player_entry["cards_left"] <= 0:
-    declare_game_winner(room_dict, other_player_id, room_key)
-  else:
+  if winner_id == "":
     room_entry["status"] = RoomState.LOBBY_2P
     emit('fault_response', {"args": fault_args}, to=room_key)
     emit_room_status_switch(room_dict, room_key)
+  else:
+    declare_game_winner(room_dict, winner_id, room_key)
 
 @app.route('/')
 def home():

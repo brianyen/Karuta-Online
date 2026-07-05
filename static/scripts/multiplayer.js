@@ -120,6 +120,7 @@ socket.on('round_results', (e) => {
                 ownScore--;
                 otherScore--;
                 updateScores();
+                alert("DEBUG: This should only activate when you reroll and there are no dead cards remaining");
             }
         });
     } else if (target != null) {
@@ -162,13 +163,14 @@ socket.on('round_results', (e) => {
 
 socket.on('fault_response', (e) => {
     console.log("Handling faults")
+    let displayName = mapping[currentSong] || currentSong;
     Object.keys(e.args).forEach(key => {
         if (key === playerID && e.args[key] == 1) { // needs to be card replacement later on
-            updateLogs("FAULT: You faulted when " + currentSong + " was playing.");
+            updateLogs("FAULT: You faulted when " + displayName + " was playing.");
             ownScore += 1;
             otherScore -= 1;
         } else if (e.args[key] == 1) {
-            updateLogs("FAULT: Opponent faulted when " + currentSong + " was playing.");
+            updateLogs("FAULT: Opponent faulted when " + displayName + " was playing.");
             ownScore -= 1;
             otherScore += 1;
         }
