@@ -105,7 +105,7 @@ def disconnect_room(data):
       room_entry["ready_count"] -= 1
       if (room_entry["ready_count"] < 0):
         print("ATTENTION: READY COUNT IN THE NEGATIVES")
-  handle_disconnect_timer(socketio, room_dict, player_id, player_entry["room_code"])
+  handle_disconnect_timer(socketio, room_dict, player_id, player_entry["room_code"], request.sid)
 
 @socketio.on('player_ready')
 def player_ready(data):
