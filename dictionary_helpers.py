@@ -264,7 +264,8 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
                 code = ''.join(random.choices(LETTERS, k=4)).upper()
             send_params["winner"] = winner
             send_params["next_code"] = code
+            with room_entry["lock"]:
+                for id in room_entry["player_info"]:
+                    remove_player_from_room(room_dict, id, room_code)
+                room_dict["rooms"].pop(room_code, None)
             emit('game_finished', send_params, to=room_code)
-            for id in room_entry["player_info"]:
-                room_dict["players"].pop(id, None)
-            room_dict["rooms"].pop(room_code, None)
