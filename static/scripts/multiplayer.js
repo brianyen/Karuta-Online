@@ -355,16 +355,14 @@ function createCardElement(songTitle) {
     });
 
     songCard.addEventListener("drop", (event) => {
-        if (correct && dragged != null) {
-            songCard.style.outline = "";
-            songCard.style.outlineOffset = "";
+        songCard.style.outline = "";
+        songCard.style.outlineOffset = "";
 
-            if (dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id) {
-                let dummy = createCardElement("");
-                gameSpaceEl.replaceChild(dummy, dragged);
-                gameSpaceEl.replaceChild(dragged, songCard);
-                gameSpaceEl.replaceChild(songCard, dummy);
-            }
+        if (correct && dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id) {
+            let dummy = createCardElement("");
+            gameSpaceEl.replaceChild(dummy, dragged);
+            gameSpaceEl.replaceChild(dragged, songCard);
+            gameSpaceEl.replaceChild(songCard, dummy);
         }
     });
 
