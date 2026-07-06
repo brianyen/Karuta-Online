@@ -88,7 +88,7 @@ def leave_from_room(data):
     print(e)
 
 @socketio.on('disconnect')
-def disconnect_room(data):
+def disconnect_room():
   # some integrity checks, hopefully these won't be needed...
   player_id = room_dict["players_sid"].get(request.sid)
   if player_id == None or player_id not in room_dict["players"]:
