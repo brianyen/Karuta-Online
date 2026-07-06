@@ -307,7 +307,7 @@ function createCardElement(songTitle) {
     let songCard = document.createElement("div");
 
     let cardImage = document.createElement("img");
-    let cardText = document.createElement("div");
+    let cardText = document.createElement("canvas");
     songCard.appendChild(cardImage);
     songCard.appendChild(cardText);
         
@@ -318,6 +318,9 @@ function createCardElement(songTitle) {
     cardImage.draggable = false;
     songCard.draggable = true;
 
+    cardText.height = 72;
+    cardText.width = 104;
+    
     let cardTitle = (mapping[songTitle] != undefined) ? mapping[songTitle] : songTitle;
 
     songCard.addEventListener("click", handleSongChoice);
@@ -366,11 +369,16 @@ function createCardElement(songTitle) {
         }
     });
 
-    if (cardTitle.slice(-4) != ".mp3") {
-        cardText.innerHTML = cardTitle;
-    } else {
-        cardText.innerHTML = cardTitle.slice(0, -4);
-    }
+
+    let context = cardText.getContext("2d");
+    context.font = "bold 12px Arial";
+    context.fillStyle = "black";
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    if (cardTitle.slice(-4) === ".mp3") {
+        cardTitle = cardTitle.slice(0, -4);
+    } 
+    addWrappedCanvasText(context, cardTitle, cardText.width / 2, 20, cardText.width - 10, 14);
     cardImage.src = images[songTitle] || "";
 
     return songCard;
@@ -495,6 +503,25 @@ function replayRoom() {
         window.location.href = data.url;
     })
     .catch((error) => console.error("Error:", error));
+}
+
+function addWrappedCanvasText(context, text, x, y, widthLimit, yOffset) {
+    let wordArray = text.split(" ")
+    let currentLine = "";
+
+    for (let i = 0; i < wordArray.length; i++) {
+        let test = currentLine + wordArray[i] + " ";
+        let projectedWidth = context.measureText(test).width;
+
+        if (projectedWidth > widthLimit && currentLine != "") {
+            context.fillText(currentLine.trim(), x, y);
+            currentLine = wordArray[i] + " ";
+            y += yOffset;
+        } else {
+            currentLine = test;
+        }
+    }
+    context.fillText(currentLine.trim(), x, y);
 }
 
 function loadPlaylistsList() {
