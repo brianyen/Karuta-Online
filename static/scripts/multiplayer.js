@@ -217,6 +217,8 @@ socket.on('room_full', () => {
     alert("issue while joining room, it may be full")
 })
 
+socket.on('ping_check', (server_callback) => { server_callback(); })
+
 async function startSyncHandler(e) {
     readyButtonEl.disabled = true;
     countdown.innerHTML = "Syncing audio tracks..."

@@ -70,10 +70,10 @@ def join_game(data):
       if re_emit:
         emit_room_status_switch(room_dict, prev_room)
         
-      add_player_to_room(room_dict, player_id, room_key, request)
+      add_player_to_room(socketio, room_dict, player_id, room_key, request)
     elif player_id not in room_dict["players"]:
       # PLAYER DOES NOT EXIST
-      add_player_to_room(room_dict, player_id, room_key, request)
+      add_player_to_room(socketio, room_dict, player_id, room_key, request)
   except Exception as e:
     print(e)
     emit('room_missing', to=request.sid)
