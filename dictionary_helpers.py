@@ -9,6 +9,8 @@ from mutagen import File
 from pathlib import Path
 from urllib.parse import quote
 from threading import Lock
+from collections import deque
+import time
 
 SONGS_FOLDER = "stored-songs"
 METADATA_FOLDER = "metadata"
@@ -30,7 +32,7 @@ class PlayerState(Enum):
   CONNECT = 1
   DISCONNECT = 2
 
-def add_player_to_room(room_dict, player_id, room_code, request):
+def add_player_to_room(socketio, room_dict, player_id, room_code, request):
     room_full = False
     with room_dict["rooms"][room_code]["lock"]:
         player_info = room_dict["rooms"][room_code]["player_info"]
@@ -47,8 +49,10 @@ def add_player_to_room(room_dict, player_id, room_code, request):
                 "cards_left": len(room_entry["available_songs"]) // 2,
                 "response_time": -1,
                 "fault_status": 0,
+                "rtts": deque(maxsize=5)
             }
             room_dict["players_sid"][request.sid] = player_id
+            ping_cycle(socketio, room_dict, player_id, request)
         else:
             room_full = True
     if room_full:
@@ -101,6 +105,45 @@ def handle_disconnect_timer(socketio, room_dict, player_id, room_code, sid):
     if player_entry and player_entry["status"] == PlayerState.DISCONNECT and room_code == player_entry["room_code"]:
         if sid != room_dict["players_sid"].get(player_id):
             remove_player_from_room(room_dict, player_id, room_code)
+
+def ping_cycle(socketio, room_dict, player_id, request):
+    outlying_ping = False
+    ping_timestamp = time.time()
+    player_entry = room_dict["players"].get(player_id)
+    rtt_queue = player_entry.get("rtts")
+    if player_entry == None or rtt_queue == None:
+        return
+
+    def ping_response():
+        if room_dict["players"].get(player_id) == None:
+            return
+        nonlocal outlying_ping
+        outlying_ping = False
+        rtt = time.time() - ping_timestamp
+
+        if len(rtt_queue) >= 5:
+            rtt_queue.popleft()
+        rtt_queue.append(rtt)
+    
+    while True:
+        if room_dict["players"].get(player_id) == None:
+            return
+        sid = room_dict["players_sid"].get(player_id)
+        if sid == None:
+            return
+        if outlying_ping:
+            if len(rtt_queue) >= 5:
+                rtt_queue.popleft()
+            rtt_queue.append(3)
+            
+            ping_timestamp = time.time()
+            outlying_ping = True
+            socketio.emit('ping_check', to=sid, callback=ping_response)
+        else:
+            ping_timestamp = time.time()
+            outlying_ping = True
+            socketio.emit('ping_check', to=sid, callback=ping_response)
+        socketio.sleep(5)
 
 def song_choice(room_dict, player_id, room_code, from_join=False):
     room_entry = room_dict["rooms"][room_code]
@@ -179,7 +222,16 @@ def declare_game_winner(room_dict, player_id, room_code):
 def handle_card_buffer(socketio, room_dict, player_id, room_code):
     room_entry = room_dict["rooms"][room_code]
     saved_song = room_entry["current_song"]
-    socketio.sleep(1)
+
+    to_sleep = 0.5
+    with room_entry["lock"]:
+        for id in room_entry:
+            rtt_queue = room_entry["players"][id].get("rtts")
+            for rtt in rtt_queue:
+                to_sleep = max(to_sleep, 1.3 * rtt)
+
+    print("to_sleep chosen to be:", to_sleep)
+    socketio.sleep(to_sleep)
 
     with room_entry["lock"]:
         if saved_song != room_entry["current_song"]: # other logic already handled everything
