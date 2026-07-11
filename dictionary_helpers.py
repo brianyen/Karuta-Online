@@ -225,8 +225,8 @@ def handle_card_buffer(socketio, room_dict, player_id, room_code):
 
     to_sleep = 0.5
     with room_entry["lock"]:
-        for id in room_entry:
-            rtt_queue = room_entry["players"][id].get("rtts")
+        for id in room_entry["player_info"]:
+            rtt_queue = room_dict["players"][id].get("rtts")
             for rtt in rtt_queue:
                 to_sleep = max(to_sleep, 1.3 * rtt)
 
