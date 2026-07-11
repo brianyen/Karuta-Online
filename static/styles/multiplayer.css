@@ -1,12 +1,3 @@
-#game-space {
-    border: 1px solid black;
-    position: relative;
-    width: 100%;
-    height: auto;
-    display: grid;
-    gap: 3px;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-}
 #go-home {
     position: absolute;
     right: 100px;
@@ -51,6 +42,15 @@
     bottom: 1px;
     background-color: white;
     pointer-events: none;
+}
+.game-space {
+    border: 1px solid black;
+    position: relative;
+    width: 100%;
+    height: auto;
+    display: grid;
+    gap: 3px;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
 }
 .navigation:hover {
     background-color: lightblue;

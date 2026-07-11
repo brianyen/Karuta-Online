@@ -33,10 +33,10 @@ class PlayerState(Enum):
   DISCONNECT = 2
 
 def add_player_to_room(socketio, room_dict, player_id, room_code, request):
+    room_entry = room_dict["rooms"][room_code]
     room_full = False
-    with room_dict["rooms"][room_code]["lock"]:
+    with room_entry["lock"]:
         player_info = room_dict["rooms"][room_code]["player_info"]
-        room_entry = room_dict["rooms"][room_code]
         if len(player_info) < 2:
             player_info.append(player_id) # freshly add player to room and room entry
             room_dict["players"][player_id] = {
@@ -45,11 +45,11 @@ def add_player_to_room(socketio, room_dict, player_id, room_code, request):
                 "room_code": room_code,
                 "ready": False,
                 "sync_ready": False,
-                # "cards": [],
+                "cards": [],
                 "cards_left": len(room_entry["available_songs"]) // 2,
                 "response_time": -1,
                 "fault_status": 0,
-                "rtts": deque(maxsize=5)
+                "rtts": deque(maxlen=5)
             }
             room_dict["players_sid"][request.sid] = player_id
             ping_cycle(socketio, room_dict, player_id, request)
@@ -60,10 +60,15 @@ def add_player_to_room(socketio, room_dict, player_id, room_code, request):
         return 1
     
     join_room(room_code)
-    if len(player_info) == 1: # temporary state stuff
-        room_entry["status"] = RoomState.LOBBY_1P
-    if len(player_info) == 2 and room_entry["status"] == RoomState.LOBBY_1P:
-        room_entry["status"] = RoomState.LOBBY_2P
+    with room_entry["lock"]:
+        if len(player_info) == 1: # temporary state stuff
+            room_entry["status"] = RoomState.LOBBY_1P
+        if len(player_info) == 2 and room_entry["status"] == RoomState.LOBBY_1P: # hopefully this only happens on game init
+            # possibly the worst two lines of code i've ever written
+            room_dict["players"][room_entry["player_info"][0]]["cards"] = room_entry["available_songs"][:round(len(room_entry["available_songs"]) / 2)]
+            room_dict["players"][room_entry["player_info"][1]]["cards"] = room_entry["available_songs"][round(len(room_entry["available_songs"]) / 2):]
+
+            room_entry["status"] = RoomState.LOBBY_2P
     emit_room_status_switch(room_dict, room_code)
 
 def remove_player_from_room(room_dict, player_id, room_code):
@@ -174,19 +179,22 @@ def pass_song(room_dict, player_id, room_code):
     update = { "winner": "", "remove": "", "add": "" }
     with room_entry["lock"]:
         current_song = room_entry["current_song"]
-        available_songs = room_entry["available_songs"]
         unplayed_songs = room_entry["unplayed_songs"]
+        for id in room_entry["player_info"]:
+            player_entry = room_dict["players"][id]
+            player_songs = player_entry["cards"]
 
-        if current_song in available_songs: # need to reroll
-            update["remove"] = current_song
-            available_songs.remove(current_song)
-            if len(unplayed_songs) >= 1: # at least one dead song exists, add it
-                next_song = unplayed_songs.pop(0)
-                available_songs.append(next_song)
-                update["add"] = next_song
-            else:   
-                for id in room_entry["player_info"]:
-                    room_dict["players"][id]["cards_left"] -= 1
+            if current_song in player_songs:
+                update["remove"] = current_song
+                player_songs.remove(current_song)
+                if len(unplayed_songs) >= 1:
+                    next_song = unplayed_songs.pop(0)
+                    player_songs.append(next_song)
+                    update["add"] = next_song
+                else:
+                    for id in room_entry["player_info"]:
+                        room_dict["players"][id]["cards_left"] -= 1
+
         room_entry["status"] = RoomState.RESULTS_SENT
         room_entry["current_song"] = ""
         reset_players(room_dict, room_code)
@@ -201,12 +209,14 @@ def declare_round_winner(room_dict, player_id, room_code):
         update = { "winner": player_id, "remove": current_song, "add": "" }
         player_entry = room_dict["players"][player_id]
         player_entry["cards_left"] -= 1
-        available_songs = room_entry["available_songs"]
 
-        if current_song in available_songs:
-            available_songs.remove(current_song)
-        else: 
-            print("ATTENTION: round was won on some song but it's no longer in the dictionary's available songs")
+        for id in room_entry["player_info"]:
+            player_entry = room_dict["players"][id]
+            player_songs = player_entry["cards"]
+
+            if current_song in player_songs:
+                update["remove"] = current_song
+                player_songs.remove(current_song)
 
         room_entry["status"] = RoomState.RESULTS_SENT
         room_entry["current_song"] = ""
@@ -289,12 +299,13 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
     with room_entry["lock"]:
         send_params = {
             "deck": room_entry["deck_name"],
-            "songs": room_entry["available_songs"],
-            "scores": {}
+            "songs": {},
+            "scores": {} # replace with actual  length i guess
         }
 
         for id in room_entry["player_info"]:
             send_params["scores"][id] = room_dict["players"][id]["cards_left"]
+            send_params["songs"][id] = room_dict["players"][id]["cards"]
 
     match room_entry["status"]:
         case RoomState.LOBBY_1P:
