@@ -1,5 +1,6 @@
 let audioPlayerEl = document.getElementById("audioPlayer");
-let gameSpaceEl = document.getElementById("game-space");
+let gameSpaceOpponentEl = document.getElementById("game-space-opponent");
+let gameSpaceSelfEl = document.getElementById("game-space-self");
 let readyEl = document.getElementById("readyCheckbox");
 let readyButtonEl = document.getElementById("ready");
 let readyDivEl = document.getElementById("readyDiv");
@@ -27,7 +28,6 @@ let timeoutActive = false;
 let params = new URLSearchParams(document.location.search);
 let room_key = params.get("room"); 
 let deck;
-let availableSongs = [];
 let currentSong = "";
 let nextRoom = ""
 let init = false;
@@ -117,8 +117,11 @@ socket.on('round_results', (e) => {
                 target.style.cursor = "auto";
                 target.id = "";
                 target.draggable = false;
-                ownScore--;
-                otherScore--;
+                if (target.parentElement.id == "game-space-self") {
+                    ownScore--;
+                } else {
+                    otherScore--;
+                }
                 updateScores();
                 alert("DEBUG: This should only activate when you reroll and there are no dead cards remaining");
             }
@@ -290,7 +293,7 @@ function addNextCard(toReplace = null, nextCardTitle = null, faultParams = {}) {
         correct = true;
         timeoutActive = true;
         setTimeout(() => {
-            gameSpaceEl.replaceChild(createCardElement(nextCardTitle), toReplace);
+            toReplace.parentElement.replaceChild(createCardElement(nextCardTitle), toReplace);
             let next = document.getElementById(nextCardTitle);
             toReplace.style.outline = "4px solid red";
             toReplace.style.outlineOffset = "-4px";
@@ -329,11 +332,11 @@ function createCardElement(songTitle) {
 
     songCard.addEventListener("dragenter", (event) => {
         event.preventDefault()
-        if (correct && dragged != null) {
+        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl) {
             const draggedElementId = event.dataTransfer.getData("text/plain");
             songCard.style.outline = "4px solid #6fb5cf";
             songCard.style.outlineOffset = "-4px";
-            }
+        }
     });
 
     songCard.addEventListener("dragover", (event) => {
@@ -363,14 +366,14 @@ function createCardElement(songTitle) {
         songCard.style.outline = "";
         songCard.style.outlineOffset = "";
 
-        if (correct && dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id) {
+        if (correct && dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id && 
+                event.target.parentElement == gameSpaceSelfEl && dragged.parentElement == gameSpaceSelfEl) {
             let dummy = createCardElement("");
-            gameSpaceEl.replaceChild(dummy, dragged);
-            gameSpaceEl.replaceChild(dragged, songCard);
-            gameSpaceEl.replaceChild(songCard, dummy);
+            gameSpaceSelfEl.replaceChild(dummy, dragged);
+            gameSpaceSelfEl.replaceChild(dragged, songCard);
+            gameSpaceSelfEl.replaceChild(songCard, dummy);
         }
     });
-
 
     let context = cardText.getContext("2d");
     context.font = "bold 12px Arial";
@@ -464,12 +467,17 @@ async function initGameState(e) {
     let res = await loadCustom();
     deckDisplayEl.innerHTML = "Deck: " + deck;
     const arraysEqual = (a, b) => a.length === b.length && a.every((val, index) => val === b[index]);
-    if (!arraysEqual(e.songs, availableSongs)) {
-        availableSongs = e.songs;
-        availableSongs.forEach((song) => {
-            gameSpaceEl.appendChild(createCardElement(song));
-        })
-    }
+    Object.keys(e.songs).forEach((id) => {
+        if (id === playerID) {
+            e.songs[id].forEach((song) => {
+                gameSpaceSelfEl.appendChild(createCardElement(song));
+            })
+        } else {
+            e.songs[id].forEach((song) => {
+                gameSpaceOpponentEl.appendChild(createCardElement(song));
+            })
+        }
+    })
     Object.keys(e.scores).forEach((id) => {
         if (id === playerID) {
             ownScore = e.scores[id];
