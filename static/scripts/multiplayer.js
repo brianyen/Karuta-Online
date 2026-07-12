@@ -330,10 +330,9 @@ function createCardElement(songTitle) {
 
     songCard.addEventListener("click", handleSongChoice);
 
-    /*
     songCard.addEventListener("dragenter", (event) => {
         event.preventDefault()
-        if (correct && dragged != null) {
+        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl) {
             const draggedElementId = event.dataTransfer.getData("text/plain");
             songCard.style.outline = "4px solid #6fb5cf";
             songCard.style.outlineOffset = "-4px";
@@ -367,13 +366,14 @@ function createCardElement(songTitle) {
         songCard.style.outline = "";
         songCard.style.outlineOffset = "";
 
-        if (correct && dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id) {
+        if (correct && dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id && 
+                event.target.parentElement == gameSpaceSelfEl && dragged.parentElement == gameSpaceSelfEl) {
             let dummy = createCardElement("");
-            gameSpaceEl.replaceChild(dummy, dragged);
-            gameSpaceEl.replaceChild(dragged, songCard);
-            gameSpaceEl.replaceChild(songCard, dummy);
+            gameSpaceSelfEl.replaceChild(dummy, dragged);
+            gameSpaceSelfEl.replaceChild(dragged, songCard);
+            gameSpaceSelfEl.replaceChild(songCard, dummy);
         }
-    });*/
+    });
 
     let context = cardText.getContext("2d");
     context.font = "bold 12px Arial";

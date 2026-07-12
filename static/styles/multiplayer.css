@@ -35,6 +35,7 @@
     max-height: 67%;
     pointer-events: none;
     object-fit: contain;
+    pointer-events: none;
 }
 .card-text {
     height: 33%;
