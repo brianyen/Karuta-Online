@@ -282,6 +282,10 @@ def handle_faults(data):
           fault_args[player_id] = 1
           player_entry["cards_left"] += 1
           other_player_entry["cards_left"] -= 1
+        elif fault_status == 2:
+          fault_args[player_id] = 2
+          player_entry["cards_left"] += 2
+          other_player_entry["cards_left"] -= 1
         else:
           print("ATTENTION: bad fault status 1", fault_status, other_fault_status)
       elif other_fault_status == 1:
@@ -291,10 +295,27 @@ def handle_faults(data):
           other_player_entry["cards_left"] += 1
         elif fault_status == 1:
           fault_args[player_id] = 1
+        elif fault_status == 2:
+          fault_args[player_id] = 2
+          player_entry["cards_left"] += 1
+          other_player_entry["cards_left"] -= 1
         else:
           print("ATTENTION: bad fault status 2:", fault_status, other_fault_status)
+      elif other_fault_status == 2:
+        fault_args[other_player_id] = 2
+        if fault_status == -1:
+          player_entry["cards_left"] -= 2
+          other_player_entry["cards_left"] += 2
+        elif fault_status == 1:
+          fault_args[player_id] = 1
+          player_entry["cards_left"] -= 1
+          other_player_entry["cards_left"] += 1
+        elif fault_status == 2:
+          fault_args[player_id] = 2
+        else:
+          print("ATTENTION: bad fault status 3:", fault_status, other_fault_status)
       else:
-        print("ATTENTION: bad fault status 3:", fault_status, other_fault_status)
+        print("ATTENTION: bad fault status 4:", fault_status, other_fault_status)
   
     if player_entry["cards_left"] <= 0:
       winner_id = player_id
@@ -410,5 +431,5 @@ def get_custom_images():
   return jsonify(out)
 
 if __name__ == '__main__':
-  socketio.run(app, debug=True)
+  socketio.run(app, debug=False)
 

@@ -21,7 +21,8 @@ let mapping = {};
 let correct = true;
 let dragged = null;
 let songStart = null;
-let faulted = -1;
+let faultedSelf = -1;
+let faultedOpponent = -1;
 let wrongCards = [];
 let timeoutActive = false;
 
@@ -29,6 +30,7 @@ let params = new URLSearchParams(document.location.search);
 let room_key = params.get("room"); 
 let deck;
 let currentSong = "";
+let correctSide = "";
 let nextRoom = ""
 let init = false;
 
@@ -68,9 +70,9 @@ socket.on('2p_room', (e) => {
 
 socket.on('start_sync', (e) => {
     startSyncHandler(e)
-    });
+});
 
-    socket.on('start_playing', (e) => {
+socket.on('start_playing', (e) => {
     countdown.innerHTML = "Round starting in 3...";
 
     setTimeout(() => {
@@ -90,9 +92,17 @@ socket.on('start_sync', (e) => {
         tapoutDivEl.style.display = 'block';
         tapoutEl.disabled = false;
         correct = false;
-        faulted = -1;
-        songStart = performance.now()
-        answerEl.innerHTML = "Now playing..."
+        faultedSelf = -1;
+        faultedOpponent = -1;
+        songStart = performance.now();
+        answerEl.innerHTML = "Now playing...";
+
+        let card = document.getElementById(currentSong);
+        if (card != null) {
+            correctSide = card.parentElement.id;
+        } else {
+            correctSide = "";
+        }
     }, 3000);
 });
 
@@ -102,8 +112,19 @@ socket.on('round_results', (e) => {
     let remove = e.remove;
     let add = e.add;
 
+    faultCount = 0;
+    if (faultedSelf == 1) {
+        faultCount++;
+    }
+    if (faultedOpponent == 1) {
+        faultCount++;
+    }
+    if (faultCount == 0) {
+        faultCount = -1;
+    }
+
     let target = (remove === "") ? null : document.getElementById(remove);
-    let faultParams = { fault_status: faulted, player_id: playerID, room: room_key };
+    let faultParams = { fault_status: faultCount, player_id: playerID, room: room_key };
 
     countdownEl.innerHTML = "Round is finished"
     answerEl.innerHTML = "Song name: " + currentSong;
@@ -161,22 +182,36 @@ socket.on('round_results', (e) => {
     correct = true;
     tapoutEl.disabled = true;
 
-    faulted = -1;
+    faultedSelf = -1;
+    faultedOpponent = -1;
 })
 
 socket.on('fault_response', (e) => {
     console.log("Handling faults")
     let displayName = mapping[currentSong] || currentSong;
     Object.keys(e.args).forEach(key => {
-        if (key === playerID && e.args[key] == 1) { // needs to be card replacement later on
-            updateLogs("FAULT: You faulted when " + displayName + " was playing.");
-            ownScore += 1;
-            otherScore -= 1;
-        } else if (e.args[key] == 1) {
-            updateLogs("FAULT: Opponent faulted when " + displayName + " was playing.");
-            ownScore -= 1;
-            otherScore += 1;
-        }
+        // deal with this later later
+        if (key === playerID) { // needs to be card replacement later on
+            if (e.args[key] == 1) {
+                updateLogs("FAULT: You faulted when " + displayName + " was playing.");
+                ownScore += 1;
+                otherScore -= 1;
+            } else if (e.args[key] == 2) {
+                updateLogs("FAULT: You faulted twice when " + displayName + " was playing.");
+                ownScore += 2;
+                otherScore -= 2;
+            }
+        } else {
+            if (e.args[key] == 1) {
+                updateLogs("FAULT: Opponent faulted when " + displayName + " was playing.");
+                ownScore -= 1;
+                otherScore += 1;
+            } else if (e.args[key] == 2) {
+                updateLogs("FAULT: Opponent faulted twice when " + displayName + " was playing.");
+                ownScore -= 2;
+                otherScore += 2;
+            }
+        } 
         updateScores();
     })
 })
@@ -192,7 +227,8 @@ socket.on('re_emission', (e) => {
     readyEl.checked = false;
     tapoutDivEl.style.display = 'block';
     correct = true;
-    faulted = -1;
+    faultedSelf = -1;
+    faultedOpponent = -1;
     answerEl.innerHTML = "Now playing..."
     socket.emit('sync_ready', { room: room_key, player_id: playerID })
     tapOut();
@@ -276,7 +312,13 @@ function handleSongChoice(event) {
         wrongCards.push(target);
         target.style.outline = "2px solid red";
         target.style.outlineOffset = "-2px";
-        faulted = 1;
+        if (target.parentElement.id != correctSide) {
+            if (target.parentElement.id == "game-space-self") {
+                faultedSelf = 1;
+            } else if (target.parentElement.id == "game-space-opponent") {
+                faultedOpponent = 1;
+            }
+        }
     }
 }
 
