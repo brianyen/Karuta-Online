@@ -233,7 +233,7 @@ def handle_card_buffer(socketio, room_dict, player_id, room_code):
     room_entry = room_dict["rooms"][room_code]
     saved_song = room_entry["current_song"]
 
-    to_sleep = 0.5
+    to_sleep = 0.75
     with room_entry["lock"]:
         for id in room_entry["player_info"]:
             rtt_queue = room_dict["players"][id].get("rtts")
