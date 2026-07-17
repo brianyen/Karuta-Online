@@ -274,6 +274,7 @@ def handle_faults(data):
 
     if other_fault_status == 0:
       player_entry["fault_status"] = fault_status
+      return
     else:
       if other_fault_status == -1:
         if fault_status == -1:

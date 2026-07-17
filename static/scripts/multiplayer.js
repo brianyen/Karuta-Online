@@ -144,7 +144,6 @@ socket.on('round_results', (e) => {
                     otherScore--;
                 }
                 updateScores();
-                alert("DEBUG: This should only activate when you reroll and there are no dead cards remaining");
             }
         });
     } else if (target != null) {
@@ -309,7 +308,7 @@ function handleSongChoice(event) {
 
         countdownEl.innerHTML = "Waiting for round results..."
         socket.emit('player_response', { player_id: playerID, room: room_key, response_time: timeForCard });
-        updateLogs(`Time taken for ${currentSong}: ${timeForCard}`)
+        updateLogs(`TIME: You took ${timeForCard}ms to click on ${currentSong}`)
         canTapOut = false;
         tapoutEl.disabled = true;
     } else if (!correct) {
