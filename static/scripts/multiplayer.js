@@ -1,4 +1,5 @@
 let audioPlayerEl = document.getElementById("audioPlayer");
+let dummyAudioPlayerEl = document.getElementById("dummyAudioPlayer");
 let gameSpaceOpponentEl = document.getElementById("game-space-opponent");
 let gameSpaceSelfEl = document.getElementById("game-space-self");
 let readyEl = document.getElementById("readyCheckbox");
@@ -96,7 +97,6 @@ socket.on('start_playing', (e) => {
         faultedSelf = -1;
         faultedOpponent = -1;
         songStart = Date.now();
-        updateLogs(`TIME: ${currentSong} STARTED AT ${songStart}`)
         answerEl.innerHTML = "Now playing...";
 
         let card = document.getElementById(currentSong);
@@ -270,9 +270,12 @@ async function startSyncHandler(e) {
     const response = await fetch(e.audio_url);
     const blob = await response.blob();
     const localAudioUrl = URL.createObjectURL(blob);
+    audioPlayerEl.oncanplaythrough = () => {
+        socket.emit('sync_ready', { room: room_key, player_id: playerID });
+        audioPlayerEl.oncanplaythrough = null;
+    }
     audioPlayerEl.src = localAudioUrl; 
     audioPlayerEl.load();
-    socket.emit('sync_ready', { room: room_key, player_id: playerID })
 }
 
 async function playSong(song, randomStart) {
@@ -313,7 +316,7 @@ function handleSongChoice(event) {
 
         countdownEl.innerHTML = "Waiting for round results..."
         socket.emit('player_response', { player_id: playerID, room: room_key, response_time: timeForCard });
-        updateLogs(`TIME: Clicked at ${timeClicked}, you took ${timeForCard}ms to click on ${currentSong}`)
+        updateLogs(`TIME: You took ${timeForCard}ms to click on ${currentSong}`)
         canTapOut = false;
         tapoutEl.disabled = true;
     } else if (!correct) {
@@ -477,6 +480,15 @@ function toggleReady() {
     } else {
         socket.emit('player_unready', { player_id: playerID, room: room_key });
     }
+
+    let silent = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    dummyAudioPlayerEl.src = silent;
+    dummyAudioPlayerEl.volume = 0;
+    dummyAudioPlayerEl.play().then(() => {
+        dummyAudioPlayerEl.pause();
+    }).catch(err => {
+        console.error("silent audio fail:", err);
+    });
 }
 
 function tapOut() {
