@@ -14,6 +14,7 @@ let ownScoreEl = document.getElementById("own-score");
 let otherScoreEl = document.getElementById("other-score");
 let notificationsEl = document.getElementById("notifications");
 let playlistSelectEl = document.getElementById("playlistSelect");
+let volumeEl = document.getElementById("volume-slider");
 
 let images = {};
 let mapping = {};
@@ -593,5 +594,10 @@ function loadPlaylistsList() {
     })
     .catch((error) => console.error("Error:", error));
 }
+
+volumeEl.addEventListener("change", (e) => {
+    console.log(parseFloat(e.target.value));
+    audioPlayerEl.volume = parseFloat(e.target.value);
+})
 
 loadPlaylistsList();
