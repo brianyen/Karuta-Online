@@ -71,7 +71,7 @@ def add_player_to_room(socketio, room_dict, player_id, room_code, request):
             room_entry["status"] = RoomState.LOBBY_2P
     emit_room_status_switch(room_dict, room_code)
 
-def remove_player_from_room(room_dict, player_id, room_code):
+def remove_player_from_room(room_dict, player_id, room_code, from_declare_winner=False):
     # remove the client from the room and room entry
     player_info = room_dict["rooms"][room_code]["player_info"]
     player_entry = room_dict["players"][player_id]
@@ -98,7 +98,7 @@ def remove_player_from_room(room_dict, player_id, room_code):
         room_dict["players_sid"].pop(sid, None)
         room_dict["players"].pop(player_id, None)
 
-    if re_emit:
+    if re_emit and not from_declare_winner:
         emit_room_status_switch(room_dict, room_code)
     
 def handle_disconnect_timer(socketio, room_dict, player_id, room_code, sid):
@@ -152,6 +152,8 @@ def ping_cycle(socketio, room_dict, player_id, request):
 
 def song_choice(room_dict, player_id, room_code, from_join=False):
     room_entry = room_dict["rooms"][room_code]
+    for id in room_entry["player_info"]:
+        print(f"cards left for {id}: {str(room_dict['players'][id]['cards_left'])}")
     re_emit = False
     with room_entry["lock"]:
         if len(room_entry["all_songs"]) == 0:
@@ -328,6 +330,7 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
             send_params["winner"] = winner
             send_params["next_code"] = code
             emit('game_finished', send_params, to=room_code)
-            for id in room_entry["player_info"]:
-                remove_player_from_room(room_dict, id, room_code)
+            count = len(room_entry["player_info"])
+            for _ in range(count):
+                remove_player_from_room(room_dict, room_entry["player_info"].pop(0), room_code, from_declare_winner=True)
             room_dict["rooms"].pop(room_code, None)
