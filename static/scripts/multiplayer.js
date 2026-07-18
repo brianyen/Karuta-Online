@@ -31,6 +31,10 @@ let timeoutActive = false;
 let params = new URLSearchParams(document.location.search);
 let room_key = params.get("room"); 
 let deck;
+let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let gainControl = audioContext.createGain()
+let currentSongBuff = null;
+let currentNode = null;
 let currentSong = "";
 let correctSide = "";
 let nextRoom = ""
@@ -42,6 +46,8 @@ let otherScore = -1;
 let playerID = sessionStorage.getItem("playerID") || crypto.randomUUID();
 sessionStorage.setItem("playerID", playerID);
 const socket = io();
+gainControl.gain.value = parseFloat(volumeEl.value);
+gainControl.connect(audioContext.destination);
 
 socket.on('connect', () => {
     console.log("Connection established");
@@ -86,9 +92,19 @@ socket.on('start_playing', (e) => {
     }, 2000)
 
     async function thirdTimeoutHandler() {
+        if (!currentSongBuff) {
+            console.error("Error: Song buffer isn't prepared, retrying in 500ms");
+            setTimeout(thirdTimeoutHandler, 500);
+        }
         countdownEl.innerHTML = "Round Started"
         currentSong = e.song;
-        let playConfirm = await playSong(currentSong, e.start_time, e.audio_url)
+
+        currentNode = audioContext.createBufferSource();
+        currentNode.buffer = currentSongBuff;
+        currentNode.connect(gainControl);
+        currentNode.start(audioContext.currentTime);
+
+//         let playConfirm = await playSong(currentSong, e.start_time, e.audio_url)
         readyDivEl.style.display = 'none';
         readyEl.checked = false;
         tapoutDivEl.style.display = 'block';
@@ -265,17 +281,32 @@ socket.on('room_full', () => {
 socket.on('ping_check', (server_callback) => { server_callback(); })
 
 async function startSyncHandler(e) {
-    readyButtonEl.disabled = true;
-    countdown.innerHTML = "Syncing audio tracks..."
-    const response = await fetch(e.audio_url);
-    const blob = await response.blob();
-    const localAudioUrl = URL.createObjectURL(blob);
-    audioPlayerEl.oncanplaythrough = () => {
+    try {
+        readyButtonEl.disabled = true;
+        countdown.innerHTML = "Syncing audio tracks..."
+        
+        if (currentNode) {
+            currentNode.stop();
+            currentNode.disconnect();
+            currentNode = null;
+        }
+
+        const response = await fetch(e.audio_url);
+        const buff = await response.arrayBuffer();
+        currentSongBuff = await audioContext.decodeAudioData(buff);
         socket.emit('sync_ready', { room: room_key, player_id: playerID });
-        audioPlayerEl.oncanplaythrough = null;
+        /*
+        const blob = await response.blob();
+        const localAudioUrl = URL.createObjectURL(blob);
+        audioPlayerEl.oncanplaythrough = () => {
+            socket.emit('sync_ready', { room: room_key, player_id: playerID });
+            audioPlayerEl.oncanplaythrough = null;
+        }
+        audioPlayerEl.src = localAudioUrl; 
+        audioPlayerEl.load();*/
+    } catch (e) {
+        console.error("Error: " + e)
     }
-    audioPlayerEl.src = localAudioUrl; 
-    audioPlayerEl.load();
 }
 
 async function playSong(song, randomStart) {
@@ -481,14 +512,18 @@ function toggleReady() {
         socket.emit('player_unready', { player_id: playerID, room: room_key });
     }
 
-    let silent = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+
+    /*let silent = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
     dummyAudioPlayerEl.src = silent;
     dummyAudioPlayerEl.volume = 0;
     dummyAudioPlayerEl.play().then(() => {
         dummyAudioPlayerEl.pause();
     }).catch(err => {
         console.error("silent audio fail:", err);
-    });
+    });*/
 }
 
 function tapOut() {
@@ -614,7 +649,7 @@ function loadPlaylistsList() {
 }
 
 volumeEl.addEventListener("change", (e) => {
-    audioPlayerEl.volume = parseFloat(e.target.value);
+    gainControl.gain.setTargetAtTime(parseFloat(e.target.value), audioContext.currentTime, 0.1);
 })
 
 loadPlaylistsList();
