@@ -84,10 +84,10 @@ socket.on('start_playing', (e) => {
         countdown.innerHTML = "Round starting in 1..."
     }, 2000)
 
-    setTimeout(() => {
+    async function thirdTimeoutHandler() {
         countdownEl.innerHTML = "Round Started"
         currentSong = e.song;
-        playSong(currentSong, e.start_time, e.audio_url)
+        let playConfirm = await playSong(currentSong, e.start_time, e.audio_url)
         readyDivEl.style.display = 'none';
         readyEl.checked = false;
         tapoutDivEl.style.display = 'block';
@@ -95,7 +95,8 @@ socket.on('start_playing', (e) => {
         correct = false;
         faultedSelf = -1;
         faultedOpponent = -1;
-        songStart = performance.now();
+        songStart = Date.now();
+        updateLogs(`TIME: ${currentSong} STARTED AT ${songStart}`)
         answerEl.innerHTML = "Now playing...";
 
         let card = document.getElementById(currentSong);
@@ -104,7 +105,9 @@ socket.on('start_playing', (e) => {
         } else {
             correctSide = "";
         }
-    }, 3000);
+    }
+
+    setTimeout(thirdTimeoutHandler, 3000);
 });
 
 socket.on('round_results', (e) => {
@@ -272,16 +275,16 @@ async function startSyncHandler(e) {
     socket.emit('sync_ready', { room: room_key, player_id: playerID })
 }
 
-function playSong(song, randomStart) {
-    function attemptPlayback() {
-        audioPlayerEl.play().catch((error) => {
+async function playSong(song, randomStart) {
+    async function attemptPlayback() {
+        await audioPlayerEl.play().catch((error) => {
             console.warn("Playback failed (promise rejection), retrying...", error);
             setTimeout(attemptPlayback, 500);
         });
     }
     audioPlayerEl.currentTime = randomStart;
 
-    attemptPlayback();
+    await attemptPlayback();
         
     audioPlayerEl.onerror = function () {
         console.warn("Audio error event fired, retrying playback...");
@@ -305,11 +308,12 @@ function handleSongChoice(event) {
         target.id = "";
         target.draggable = false;
 
-        let timeForCard = Math.round(performance.now() - songStart); 
+        let timeClicked = Date.now()
+        let timeForCard = Math.round(timeClicked - songStart); 
 
         countdownEl.innerHTML = "Waiting for round results..."
         socket.emit('player_response', { player_id: playerID, room: room_key, response_time: timeForCard });
-        updateLogs(`TIME: You took ${timeForCard}ms to click on ${currentSong}`)
+        updateLogs(`TIME: Clicked at ${timeClicked}, you took ${timeForCard}ms to click on ${currentSong}`)
         canTapOut = false;
         tapoutEl.disabled = true;
     } else if (!correct) {
@@ -426,6 +430,8 @@ function createCardElement(songTitle) {
     context.fillStyle = "black";
     context.textAlign = "center";
     context.textBaseline = "top";
+    context.shadowBlur = 0.001; 
+    context.shadowColor = 'transparent';
     if (cardTitle.slice(-4) === ".mp3") {
         cardTitle = cardTitle.slice(0, -4);
     } 
@@ -596,7 +602,6 @@ function loadPlaylistsList() {
 }
 
 volumeEl.addEventListener("change", (e) => {
-    console.log(parseFloat(e.target.value));
     audioPlayerEl.volume = parseFloat(e.target.value);
 })
 

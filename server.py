@@ -55,6 +55,7 @@ def join_game(data):
       old_sid = player_entry["sid"] # remove old entry in rev index
       room_dict["players_sid"].pop(old_sid, None)
       prev_room = player_entry["room_code"]
+      print(f"---------: player prev in {prev_room} now joining {room_key}")
 
       # if in old room, this player was the last one then handle appropriately
       re_emit = False
@@ -300,7 +301,7 @@ def handle_faults(data):
         elif fault_status == 2:
           fault_args[player_id] = 2
           player_entry["cards_left"] += 2
-          other_player_entry["cards_left"] -= 1
+          other_player_entry["cards_left"] -= 2
         else:
           print("ATTENTION: bad fault status 1", fault_status, other_fault_status)
       elif other_fault_status == 1:
