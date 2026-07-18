@@ -114,9 +114,12 @@ def player_ready(data):
   player_entry = room_dict["players"][player_id]
   room_entry = room_dict["rooms"][room_key]
 
+  print(f"READY: GOT A PLAYER READY FROM PLAYER ID {player_id}")
+
   emit_song = False
   with room_entry["lock"]:
     if room_entry["status"] != RoomState.LOBBY_2P and room_entry["status"] != RoomState.LOBBY_1P:
+      print(f"-----: GOT A PLAYER READY BUT ROOM IS IN WRONG STATE")
       return
 
     if not player_entry["ready"]:
@@ -124,6 +127,9 @@ def player_ready(data):
       room_entry["ready_count"] += 1
       if (room_entry["ready_count"] > 2):
         print("ATTENTION: READY COUNT > 3")
+
+
+    print(f"-----: READY COUNT IS NOW {room_entry["ready_count"]}")
 
     if room_entry["ready_count"] == 2:
       emit_song = True
@@ -185,6 +191,7 @@ def player_response(data):
     player_entry["response_time"] = response_time
 
     if response_time < 0: # tapped out
+      print(f"TAPOUT: GOT A TAPOUT FOR SONG {room_entry["current_song"]} IN ROOM {room_key}")
       player_entry["response_time"] == -2
       if other_response_time == -2: # other player tapped out
         callback = Callback.PASS
@@ -197,6 +204,7 @@ def player_response(data):
         callback = Callback.ERROR
         error_string = "ATTENTION: tracked player response time is negative number besides -1, -2"
     else: # got the card
+      print(f"SUCCESS: GOT A CORRECT RESPONSE FOR SONG {room_entry["current_song"]} IN ROOM {room_key}, TIME IS {response_time}")
       player_entry["response_time"] == response_time
       if other_response_time == -2: # other player tapped out
         callback = Callback.WINNER
@@ -204,6 +212,8 @@ def player_response(data):
       elif other_response_time == -1: # still waiting on other player
         callback = Callback.BUFFER
       elif other_response_time >= 0: # other player got the song
+        print(f"SUCCESS: GOT A CORRECT RESPONSE FOR SONG {room_entry["current_song"]} IN ROOM {room_key}, TIME IS {response_time} FROM {player_id}")
+        print(f"-------: OTHER PLAYER GOT TIME {other_response_time} WITH PLAYER ID {other_player_id}")
         if other_response_time > response_time:
           callback = Callback.WINNER
           winner_id = player_id
@@ -216,6 +226,7 @@ def player_response(data):
         else:
           callback = Callback.ERROR
           error_string = "ATTENTION: how did we even reach this branch man. response time might be none or something idk"
+        print(f"-------: DECIDED WINNER IS {winner_id}")
       else:
         callback = Callback.ERROR
         error_string = "ATTENTION: tracked player response time is negative number besides -1, -2"
@@ -243,10 +254,13 @@ def player_unready(data):
   player_entry = room_dict["players"][player_id]
   room_entry = room_dict["rooms"][room_key]
 
+  print(f"UNREADY: GOT A PLAYER UNREADY FROM PLAYER ID {player_id}")
+
   with room_entry["lock"]:
     if player_entry["ready"]:
       player_entry["ready"] = False
       room_entry["ready_count"] -= 1
+      print(f"-------: READY COUNT IS NOW {room_entry["ready_count"]}")
       if (room_entry["ready_count"] < 0):
         print("ATTENTION: READY COUNT IN THE NEGATIVES")
   return
