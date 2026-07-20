@@ -82,6 +82,10 @@ socket.on('start_sync', (e) => {
 
 socket.on('start_playing', (e) => {
     countdown.innerHTML = "Round starting in 3...";
+    console.log(`output latency: ${audioContext.outputLatency}`);
+    console.log(`base latency: ${audioContext.baseLatency}`);
+
+    updateLogs(`Starting countdown at ${Date.now()}`)
 
     setTimeout(() => {
         countdown.innerHTML = "Round starting in 2..."
@@ -102,7 +106,7 @@ socket.on('start_playing', (e) => {
         currentNode = audioContext.createBufferSource();
         currentNode.buffer = currentSongBuff;
         currentNode.connect(gainControl);
-        currentNode.start(audioContext.currentTime);
+        currentNode.start(audioContext.currentTime, e.start_time);
 
 //         let playConfirm = await playSong(currentSong, e.start_time, e.audio_url)
         readyDivEl.style.display = 'none';
@@ -113,6 +117,7 @@ socket.on('start_playing', (e) => {
         faultedSelf = -1;
         faultedOpponent = -1;
         songStart = Date.now();
+        updateLogs(`Song actually started at ${songStart}`);
         answerEl.innerHTML = "Now playing...";
 
         let card = document.getElementById(currentSong);
