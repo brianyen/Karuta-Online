@@ -1,5 +1,3 @@
-let audioPlayerEl = document.getElementById("audioPlayer");
-let dummyAudioPlayerEl = document.getElementById("dummyAudioPlayer");
 let gameSpaceOpponentEl = document.getElementById("game-space-opponent");
 let gameSpaceSelfEl = document.getElementById("game-space-self");
 let readyEl = document.getElementById("readyCheckbox");
@@ -32,7 +30,9 @@ let params = new URLSearchParams(document.location.search);
 let room_key = params.get("room"); 
 let deck;
 let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let gainControl = audioContext.createGain()
+let gainControl = audioContext.createGain();
+let oscillate = audioContext.createOscillator();
+let gainSilent = audioContext.createGain();
 let currentSongBuff = null;
 let currentNode = null;
 let currentSong = "";
@@ -48,6 +48,11 @@ sessionStorage.setItem("playerID", playerID);
 const socket = io();
 gainControl.gain.value = parseFloat(volumeEl.value);
 gainControl.connect(audioContext.destination);
+
+gainSilent.gain.setValueAtTime(0, audioContext.currentTime);
+oscillate.connect(gainSilent);
+gainSilent.connect(audioContext.destination);
+oscillate.start();
 
 socket.on('connect', () => {
     console.log("Connection established");
@@ -108,7 +113,6 @@ socket.on('start_playing', (e) => {
         currentNode.connect(gainControl);
         currentNode.start(audioContext.currentTime, e.start_time);
 
-//         let playConfirm = await playSong(currentSong, e.start_time, e.audio_url)
         readyDivEl.style.display = 'none';
         readyEl.checked = false;
         tapoutDivEl.style.display = 'block';
@@ -300,35 +304,9 @@ async function startSyncHandler(e) {
         const buff = await response.arrayBuffer();
         currentSongBuff = await audioContext.decodeAudioData(buff);
         socket.emit('sync_ready', { room: room_key, player_id: playerID });
-        /*
-        const blob = await response.blob();
-        const localAudioUrl = URL.createObjectURL(blob);
-        audioPlayerEl.oncanplaythrough = () => {
-            socket.emit('sync_ready', { room: room_key, player_id: playerID });
-            audioPlayerEl.oncanplaythrough = null;
-        }
-        audioPlayerEl.src = localAudioUrl; 
-        audioPlayerEl.load();*/
     } catch (e) {
         console.error("Error: " + e)
     }
-}
-
-async function playSong(song, randomStart) {
-    async function attemptPlayback() {
-        await audioPlayerEl.play().catch((error) => {
-            console.warn("Playback failed (promise rejection), retrying...", error);
-            setTimeout(attemptPlayback, 500);
-        });
-    }
-    audioPlayerEl.currentTime = randomStart;
-
-    await attemptPlayback();
-        
-    audioPlayerEl.onerror = function () {
-        console.warn("Audio error event fired, retrying playback...");
-        setTimeout(attemptPlayback, 500);
-    };
 }
 
 function handleSongChoice(event) {
@@ -520,15 +498,6 @@ function toggleReady() {
     if (audioContext.state === 'suspended') {
         audioContext.resume();
     }
-
-    /*let silent = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-    dummyAudioPlayerEl.src = silent;
-    dummyAudioPlayerEl.volume = 0;
-    dummyAudioPlayerEl.play().then(() => {
-        dummyAudioPlayerEl.pause();
-    }).catch(err => {
-        console.error("silent audio fail:", err);
-    });*/
 }
 
 function tapOut() {

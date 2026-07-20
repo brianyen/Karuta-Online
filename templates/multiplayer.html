@@ -33,10 +33,6 @@
     <div id="game-space-opponent" class="game-space"></div>
     <div id="game-space-self" class="game-space"></div>
     Volume: <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.5">
-    <div id="audio">
-      <audio id="audioPlayer" style="display: none" controls></audio>
-      <audio id="dummyAudioPlayer" style="display: none" controls></audio>
-    </div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src=" {{ url_for('static', filename='scripts/multiplayer.js') }}"></script>
