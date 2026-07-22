@@ -3,10 +3,10 @@ let gameSpaceSelfEl = document.getElementById("game-space-self");
 let readyEl = document.getElementById("readyCheckbox");
 let readyButtonEl = document.getElementById("ready");
 let readyDivEl = document.getElementById("readyDiv");
-let tapoutEl = document.getElementById("tapout")
-let tapoutDivEl = document.getElementById("tapoutDiv")
+let tapoutEl = document.getElementById("tapout");
+let tapoutDivEl = document.getElementById("tapoutDiv");
 let deckDisplayEl = document.getElementById("deckDisplay");
-let nextGameDivEl = document.getElementById("nextGameDiv")
+let nextGameDivEl = document.getElementById("nextGameDiv");
 let countdownEl = document.getElementById("countdown");
 let answerEl = document.getElementById("answer");
 let ownScoreEl = document.getElementById("own-score");
@@ -23,8 +23,11 @@ let dragged = null;
 let songStart = null;
 let faultedSelf = -1;
 let faultedOpponent = -1;
+let toPass = 0;
+let toPassCards = [];
 let wrongCards = [];
 let timeoutActive = false;
+let passActive = false;
 
 let params = new URLSearchParams(document.location.search);
 let room_key = params.get("room"); 
@@ -81,16 +84,16 @@ socket.on('2p_room', (e) => {
     init = true;
 });
 
+socket.on('pass_cards', (e) => {
+    passCardsHandler(e);
+});
+
 socket.on('start_sync', (e) => {
     startSyncHandler(e)
 });
 
 socket.on('start_playing', (e) => {
     countdown.innerHTML = "Round starting in 3...";
-    console.log(`output latency: ${audioContext.outputLatency}`);
-    console.log(`base latency: ${audioContext.baseLatency}`);
-
-    updateLogs(`Starting countdown at ${Date.now()}`)
 
     setTimeout(() => {
         countdown.innerHTML = "Round starting in 2..."
@@ -121,7 +124,6 @@ socket.on('start_playing', (e) => {
         faultedSelf = -1;
         faultedOpponent = -1;
         songStart = Date.now();
-        updateLogs(`Song actually started at ${songStart}`);
         answerEl.innerHTML = "Now playing...";
 
         let card = document.getElementById(currentSong);
@@ -247,6 +249,42 @@ socket.on('fault_response', (e) => {
     })
 })
 
+socket.on('update_passes', (e) => {
+    countdownEl.innerHTML = "Finished passing cards.";
+
+    let toSwitch = e.to_switch;
+    for (let cardTitle of toSwitch) {
+        let cardEl = document.getElementById(cardTitle);
+        if (cardEl.parentElement === gameSpaceSelfEl) {
+            gameSpaceSelfEl.removeChild(cardEl);
+            let found = false;
+            for (let child of gameSpaceOpponentEl.children) {
+              if (child.id == "" || child.id == null) {
+                gameSpaceOpponentEl.replaceChild(cardEl, child);
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              gameSpaceOpponentEl.appendChild(cardEl);
+            }
+        } else {
+            gameSpaceOpponentEl.removeChild(cardEl);
+            let found = false;
+            for (let child of gameSpaceSelfEl.children) {
+              if (child.id == "" || child.id == null) {
+                gameSpaceSelfEl.replaceChild(cardEl, child);
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              gameSpaceSelfEl.appendChild(cardEl);
+            }
+        }
+    }
+});
+
 socket.on('re_emission', (e) => {
     console.log("Entering re-emission")
     if (init) {
@@ -306,6 +344,75 @@ async function startSyncHandler(e) {
         socket.emit('sync_ready', { room: room_key, player_id: playerID });
     } catch (e) {
         console.error("Error: " + e)
+    }
+}
+
+async function passCardsHandler(e) {
+    if (passActive) {
+        return;
+    }
+    if (!init) {
+        await initGameState(e);
+    }
+    init = true;
+
+    tapoutDivEl.style.display = "none";
+    tapoutEl.disabled = false;
+    correct = true;
+    readyDivEl.style.display = "none";
+    readyButtonEl.disabled = true;
+
+    toPass = e.passes[playerID];
+    if (toPass > 0) {
+        countdownEl.innerHTML = `Please choose ${toPass} cards to give to your opponent.`;
+    } else {
+        countdownEl.innerHTML = "Waiting for opponent to pass you cards...";
+        return;
+    }
+
+    function passCardsClickHandler(event) {
+        if (toPass <= 0) {
+        }
+        let target = (event.target.id === "") ? event.target.parentElement : event.target;
+        for (let i = 0; i < toPassCards.length; i++) {
+            if (toPassCards[i] === target) {
+                toPassCards.splice(i, 1);
+                target.style.outline = "";
+                target.style.outlineOffset = "";
+                toPass++;
+                countdownEl.innerHTML = `Please choose ${toPass} cards to give to your opponent.`;
+                return;
+            }
+        }
+
+        toPassCards.push(target)
+        target.style.outline = "2px solid #237554";
+        target.style.outlineOffset = "-2px";
+        toPass--;
+
+        if (toPass === 0) {
+            let params = [];
+            passActive = false;
+            for (let card of toPassCards) {
+                card.style.outline = "";
+                card.style.outlineOffset = "";
+                params.push(card.id);
+            }
+            toPassCards = [];
+            for (let card of gameSpaceSelfEl.children) {
+                card.removeEventListener("click", passCardsClickHandler);
+                card.addEventListener("click", handleSongChoice);
+            }
+            socket.emit('pass_done', { cards: params, room: room_key, player_id: playerID });
+        } else {
+            countdownEl.innerHTML = `Please choose ${toPass} cards to give to your opponent.`;
+        }
+    }
+
+    passActive = true;
+    for (let card of gameSpaceSelfEl.children) {
+        card.removeEventListener("click", handleSongChoice);
+        card.addEventListener("click", passCardsClickHandler);
     }
 }
 
