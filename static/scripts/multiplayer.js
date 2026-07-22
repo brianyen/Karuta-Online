@@ -94,10 +94,6 @@ socket.on('start_sync', (e) => {
 
 socket.on('start_playing', (e) => {
     countdown.innerHTML = "Round starting in 3...";
-    console.log(`output latency: ${audioContext.outputLatency}`);
-    console.log(`base latency: ${audioContext.baseLatency}`);
-
-    updateLogs(`Starting countdown at ${Date.now()}`)
 
     setTimeout(() => {
         countdown.innerHTML = "Round starting in 2..."
@@ -128,7 +124,6 @@ socket.on('start_playing', (e) => {
         faultedSelf = -1;
         faultedOpponent = -1;
         songStart = Date.now();
-        updateLogs(`Song actually started at ${songStart}`);
         answerEl.innerHTML = "Now playing...";
 
         let card = document.getElementById(currentSong);
@@ -368,7 +363,6 @@ async function passCardsHandler(e) {
     readyButtonEl.disabled = true;
 
     toPass = e.passes[playerID];
-    console.log("toPass:", toPass)
     if (toPass > 0) {
         countdownEl.innerHTML = `Please choose ${toPass} cards to give to your opponent.`;
     } else {
