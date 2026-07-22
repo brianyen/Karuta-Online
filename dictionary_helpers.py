@@ -26,7 +26,8 @@ class RoomState(Enum):
   STARTED_SYNC = 3
   STARTED_SONG = 4
   RESULTS_SENT = 5
-  GAME_FINISH = 6
+  PASS_CARDS = 6
+  GAME_FINISH = 7
 
 class PlayerState(Enum):
   CONNECT = 1
@@ -47,6 +48,7 @@ def add_player_to_room(socketio, room_dict, player_id, room_code, request):
                 "sync_ready": False,
                 "cards": [],
                 "cards_left": len(room_entry["available_songs"]) // 2,
+                "cards_to_pass": 0,
                 "response_time": -1,
                 "fault_status": 0,
                 "rtts": deque(maxlen=5)
@@ -256,8 +258,14 @@ def handle_card_buffer(socketio, room_dict, player_id, room_code):
         other_response_time = other_player_entry["response_time"]
 
     if (other_response_time < 0) or (other_response_time > player_response_time):
+        print("checking if need to send card over:", room_entry["current_song"])
+        if room_entry["current_song"] not in room_dict["players"][player_id]["cards"]:
+          room_dict["players"][player_id]["cards_to_pass"] = 1
         declare_round_winner(room_dict, player_id, room_code)
     else:
+        print("checking if need to send card over:", room_entry["current_song"])
+        if room_entry["current_song"] not in room_dict["players"][other_player_id]["cards"]:
+          room_dict["players"][other_player_id]["cards_to_pass"] = 1
         declare_round_winner(room_dict, other_player_id, room_code)
 
 def reset_players(room_dict, room_code):
@@ -323,6 +331,12 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
         case RoomState.RESULTS_SENT:
             emit('re_emission', send_params, to=room_code)
             return
+        case RoomState.PASS_CARDS:
+            send_params["passes"] = {}
+            with room_entry["lock"]:
+                for id in room_entry["player_info"]:
+                    send_params["passes"][id] = room_dict["players"][id]["cards_to_pass"]
+            emit('pass_cards', send_params, to=room_code)
         case RoomState.GAME_FINISH:
             code = ''.join(random.choices(LETTERS, k=4)).upper()
             while (code in room_dict['rooms']):

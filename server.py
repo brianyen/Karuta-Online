@@ -240,6 +240,10 @@ def player_response(data):
       pass_song(room_dict, player_id, room_key)
       return
     case Callback.WINNER:
+      with room_entry["lock"]:
+        print("checking if need to send card over:", room_entry["current_song"])
+        if room_entry["current_song"] not in room_dict["players"][winner_id]["cards"]:
+          room_dict["players"][winner_id]["cards_to_pass"] = 1
       declare_round_winner(room_dict, winner_id, room_key)
       return
     case Callback.BUFFER:
@@ -296,10 +300,12 @@ def handle_faults(data):
           pass
         elif fault_status == 1:
           fault_args[player_id] = 1
+          other_player_entry["cards_to_pass"] += 1
           player_entry["cards_left"] += 1
           other_player_entry["cards_left"] -= 1
         elif fault_status == 2:
           fault_args[player_id] = 2
+          other_player_entry["cards_to_pass"] += 2
           player_entry["cards_left"] += 2
           other_player_entry["cards_left"] -= 2
         else:
@@ -308,12 +314,14 @@ def handle_faults(data):
         fault_args[other_player_id] = 1
         if fault_status == -1:
           player_entry["cards_left"] -= 1
+          player_entry["cards_to_pass"] += 1
           other_player_entry["cards_left"] += 1
         elif fault_status == 1:
           fault_args[player_id] = 1
         elif fault_status == 2:
           fault_args[player_id] = 2
           player_entry["cards_left"] += 1
+          other_player_entry["cards_to_pass"] += 1
           other_player_entry["cards_left"] -= 1
         else:
           print("ATTENTION: bad fault status 2:", fault_status, other_fault_status)
@@ -321,9 +329,11 @@ def handle_faults(data):
         fault_args[other_player_id] = 2
         if fault_status == -1:
           player_entry["cards_left"] -= 2
+          player_entry["cards_to_pass"] += 2
           other_player_entry["cards_left"] += 2
         elif fault_status == 1:
           fault_args[player_id] = 1
+          player_entry["cards_to_pass"] += 1
           player_entry["cards_left"] -= 1
           other_player_entry["cards_left"] += 1
         elif fault_status == 2:
@@ -338,12 +348,46 @@ def handle_faults(data):
     elif other_player_entry["cards_left"] <= 0:
       winner_id = other_player_id
 
+    while player_entry["cards_to_pass"] > 0 and other_player_entry["cards_to_pass"] > 0:
+      player_entry["cards_to_pass"] -= 1
+      other_player_entry["cards_to_pass"] -= 1
+
+  print(f"pass status: one player is {player_entry["cards_to_pass"]} and other player is {other_player_entry["cards_to_pass"]}")
   if winner_id == "":
-    room_entry["status"] = RoomState.LOBBY_2P
+    if player_entry["cards_to_pass"] > 0 or other_player_entry["cards_to_pass"] > 0:
+      room_entry["status"] = RoomState.PASS_CARDS
+    else:
+      room_entry["status"] = RoomState.LOBBY_2P
+    
     emit('fault_response', {"args": fault_args}, to=room_key)
+
     emit_room_status_switch(room_dict, room_key)
   else:
     declare_game_winner(room_dict, winner_id, room_key)
+
+@socketio.on('pass_done')
+def handle_passes(data):
+  player_id = data.get('player_id')
+  room_key = data.get('room')
+  room_entry = room_dict["rooms"].get(room_key)
+
+  if (room_entry["status"] != RoomState.PASS_CARDS):
+    print("ATTENTION: Got 'pass done' message but not waiting for cards to be passed!")
+  with room_entry["lock"]:
+    for id in room_entry["player_info"]:
+      room_dict["players"][id]["cards_to_pass"] = 0
+      for card in data.get('cards'):
+        if id == player_id:
+          try:
+            room_dict["players"][id]["cards"].remove(card)
+          except:
+            print(f"ATTENTION: Player passed card they do not have: {card}")
+        else:
+          room_dict["players"][id]["cards"].append(card)
+    room_entry["status"] = RoomState.LOBBY_2P
+
+  emit('update_passes', {"to_switch": data.get('cards')}, to=room_key)
+  emit_room_status_switch(room_dict, room_key)
 
 @app.route('/')
 def home():
