@@ -182,6 +182,9 @@ def player_response(data):
   callback = Callback.WAITING
 
   with room_entry["lock"]:
+    if room_entry["status"] != RoomState.STARTED_SONG:
+      return
+
     response_time = data.get('response_time')
     player_entry = room_dict["players"][player_id]
 
