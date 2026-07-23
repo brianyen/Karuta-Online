@@ -366,6 +366,7 @@ def handle_faults(data):
 
     emit_room_status_switch(room_dict, room_key)
   else:
+    emit('fault_response', {"args": fault_args}, to=room_key)
     declare_game_winner(room_dict, winner_id, room_key)
 
 @socketio.on('pass_done')

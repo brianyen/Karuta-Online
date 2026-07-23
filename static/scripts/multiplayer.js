@@ -255,8 +255,18 @@ socket.on('update_passes', (e) => {
     let toSwitch = e.to_switch;
     for (let cardTitle of toSwitch) {
         let cardEl = document.getElementById(cardTitle);
+        let emptyCard = document.createElement("div");
+        emptyCard.id = "";
+        emptyCard.className = "card";
+        emptyCard.style.borderColor = "white";
+        emptyCard.style.cursor = "auto";
+        emptyCard.draggable = false;
+
+        let displayTitle = mapping[cardEl.id] || cardEl.id;
+
         if (cardEl.parentElement === gameSpaceSelfEl) {
-            gameSpaceSelfEl.removeChild(cardEl);
+            gameSpaceSelfEl.replaceChild(emptyCard, cardEl);
+            updateLogs(`SEND: You sent ${displayTitle}`);
             let found = false;
             for (let child of gameSpaceOpponentEl.children) {
               if (child.id == "" || child.id == null) {
@@ -269,7 +279,8 @@ socket.on('update_passes', (e) => {
               gameSpaceOpponentEl.appendChild(cardEl);
             }
         } else {
-            gameSpaceOpponentEl.removeChild(cardEl);
+            gameSpaceOpponentEl.replaceChild(emptyCard, cardEl);
+            updateLogs(`SEND: Your opponent sent ${displayTitle}`);
             let found = false;
             for (let child of gameSpaceSelfEl.children) {
               if (child.id == "" || child.id == null) {
@@ -400,6 +411,9 @@ async function passCardsHandler(e) {
             }
             toPassCards = [];
             for (let card of gameSpaceSelfEl.children) {
+                if (card.id == "") {
+                    continue;
+                } 
                 card.removeEventListener("click", passCardsClickHandler);
                 card.addEventListener("click", handleSongChoice);
             }
@@ -411,6 +425,9 @@ async function passCardsHandler(e) {
 
     passActive = true;
     for (let card of gameSpaceSelfEl.children) {
+        if (card.id == "") {
+            continue;
+        } 
         card.removeEventListener("click", handleSongChoice);
         card.addEventListener("click", passCardsClickHandler);
     }
