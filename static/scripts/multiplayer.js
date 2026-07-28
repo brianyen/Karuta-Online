@@ -261,6 +261,7 @@ socket.on('update_passes', (e) => {
         emptyCard.style.borderColor = "white";
         emptyCard.style.cursor = "auto";
         emptyCard.draggable = false;
+        addDragEvents(emptyCard);
 
         let displayTitle = mapping[cardEl.id] || cardEl.id;
 
@@ -530,41 +531,7 @@ function createCardElement(songTitle) {
         }
     });
 
-    songCard.addEventListener("dragover", (event) => {
-        event.preventDefault();
-    })
-
-    songCard.addEventListener("dragleave", (event) => {
-        if (correct && dragged != null && !songCard.contains(event.relatedTarget)) {
-            songCard.style.outline = "";
-            songCard.style.outlineOffset = "";
-        }
-    });
-
-    songCard.addEventListener("dragstart", (event) => {
-        if (correct) {
-            dragged = event.target;
-        }
-    });
-
-    songCard.addEventListener("dragend", (event) => {
-        if (correct) {
-            dragged = null;
-        }
-    });
-
-    songCard.addEventListener("drop", (event) => {
-        songCard.style.outline = "";
-        songCard.style.outlineOffset = "";
-
-        if (correct && dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id && 
-                event.target.parentElement == gameSpaceSelfEl && dragged.parentElement == gameSpaceSelfEl) {
-            let dummy = createCardElement("");
-            gameSpaceSelfEl.replaceChild(dummy, dragged);
-            gameSpaceSelfEl.replaceChild(dragged, songCard);
-            gameSpaceSelfEl.replaceChild(songCard, dummy);
-        }
-    });
+    addDragEvents(songCard);
 
     let context = cardText.getContext("2d");
     context.font = "bold 12px Arial";
@@ -622,6 +589,53 @@ function toggleReady() {
     if (audioContext.state === 'suspended') {
         audioContext.resume();
     }
+}
+
+function addDragEvents(songCard) {
+    songCard.addEventListener("dragenter", (event) => {
+        event.preventDefault()
+        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl) {
+            const draggedElementId = event.dataTransfer.getData("text/plain");
+            songCard.style.outline = "4px solid #6fb5cf";
+            songCard.style.outlineOffset = "-4px";
+        }
+    });
+
+    songCard.addEventListener("dragover", (event) => {
+        event.preventDefault();
+    })
+
+    songCard.addEventListener("dragleave", (event) => {
+        if (correct && dragged != null && !songCard.contains(event.relatedTarget)) {
+            songCard.style.outline = "";
+            songCard.style.outlineOffset = "";
+        }
+    });
+
+    songCard.addEventListener("dragstart", (event) => {
+        if (correct) {
+            dragged = event.target;
+        }
+    });
+
+    songCard.addEventListener("dragend", (event) => {
+        if (correct) {
+            dragged = null;
+        }
+    });
+
+    songCard.addEventListener("drop", (event) => {
+        songCard.style.outline = "";
+        songCard.style.outlineOffset = "";
+
+        if (correct && dragged && dragged.id != event.target.parentElement.id && dragged.id != event.target.id && 
+                event.target.parentElement == gameSpaceSelfEl && dragged.parentElement == gameSpaceSelfEl) {
+            let dummy = createCardElement("");
+            gameSpaceSelfEl.replaceChild(dummy, dragged);
+            gameSpaceSelfEl.replaceChild(dragged, songCard);
+            gameSpaceSelfEl.replaceChild(songCard, dummy);
+        }
+    });
 }
 
 function tapOut() {
