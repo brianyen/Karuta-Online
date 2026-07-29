@@ -66,6 +66,7 @@ function loadPlaylistsList() {
     .then((response) => response.json())
     .then((data) => {
     playlistSelectEl.innerHTML = "";
+    data.playlists.sort();
     data.playlists.forEach((filename) => {
         let option = document.createElement("option");
         option.value = filename;

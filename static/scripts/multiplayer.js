@@ -165,7 +165,8 @@ socket.on('round_results', (e) => {
             if (!res) {
                 target.removeEventListener("click", handleSongChoice);
                 target.innerHTML = "";
-                target.style.borderColor = "white";
+                target.style.border = "none";
+                target.style.backgroundColor = "transparent";
                 target.style.cursor = "auto";
                 target.id = "";
                 target.draggable = false;
@@ -178,12 +179,19 @@ socket.on('round_results', (e) => {
             }
         });
     } else if (target != null) {
+        target.style.outline = "4px solid red";
+        target.style.outlineOffset = "-4px";
         target.removeEventListener("click", handleSongChoice);
-        target.innerHTML = "";
-        target.style.borderColor = "white";
-        target.style.cursor = "auto";
-        target.id = "";
         target.draggable = false;
+        setTimeout(() => {
+            target.innerHTML = "";
+            target.style.border = "none";
+            target.style.backgroundColor = "transparent";
+            target.style.cursor = "auto";
+            target.id = "";
+            target.style.outline = "";
+            target.style.outlineOffset = "";
+        }, 1500);
     }
 
     socket.emit('fault_msg', faultParams);
@@ -258,7 +266,8 @@ socket.on('update_passes', (e) => {
         let emptyCard = document.createElement("div");
         emptyCard.id = "";
         emptyCard.className = "card";
-        emptyCard.style.borderColor = "white";
+        emptyCard.style.border = "none";
+        emptyCard.style.backgroundColor = "transparent";
         emptyCard.style.cursor = "auto";
         emptyCard.draggable = false;
         addDragEvents(emptyCard);
@@ -310,8 +319,9 @@ socket.on('re_emission', (e) => {
     correct = true;
     faultedSelf = -1;
     faultedOpponent = -1;
-    answerEl.innerHTML = "Now playing..."
+    answerEl.innerHTML = "The page was reloaded, so this round is forfeited"
     socket.emit('sync_ready', { room: room_key, player_id: playerID })
+    initGameState(e);
     tapOut();
 })
 
@@ -398,8 +408,8 @@ async function passCardsHandler(e) {
         }
 
         toPassCards.push(target)
-        target.style.outline = "2px solid #237554";
-        target.style.outlineOffset = "-2px";
+        target.style.outline = "4px solid #237554";
+        target.style.outlineOffset = "-4px";
         toPass--;
 
         if (toPass === 0) {
@@ -445,7 +455,8 @@ function handleSongChoice(event) {
         correct = true;
         target.removeEventListener("click", handleSongChoice);
         target.innerHTML = "";
-        target.style.borderColor = "white";
+        target.style.border = "none";
+        target.style.backgroundColor = "transparent";
         target.style.cursor = "auto";
         target.id = "";
         target.draggable = false;
@@ -460,8 +471,8 @@ function handleSongChoice(event) {
         tapoutEl.disabled = true;
     } else if (!correct) {
         wrongCards.push(target);
-        target.style.outline = "2px solid red";
-        target.style.outlineOffset = "-2px";
+        target.style.outline = "4px solid red";
+        target.style.outlineOffset = "-4px";
         if (target.parentElement.id != correctSide) {
             if (target.parentElement.id == "game-space-self") {
                 faultedSelf = 1;
@@ -596,7 +607,7 @@ function addDragEvents(songCard) {
         event.preventDefault()
         if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl) {
             const draggedElementId = event.dataTransfer.getData("text/plain");
-            songCard.style.outline = "4px solid #6fb5cf";
+            songCard.style.outline = "8px solid #6fb5cf";
             songCard.style.outlineOffset = "-4px";
         }
     });
@@ -674,6 +685,8 @@ function updateLogs(newEntry) {
 }
 
 async function initGameState(e) {
+    gameSpaceOpponentEl.style.display = "grid";
+    gameSpaceSelfEl.style.display = "grid";
     deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
     let res = await loadCustom();
     deckDisplayEl.innerHTML = "Deck: " + deck;
