@@ -1,8 +1,41 @@
+body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: #f8fafc;
+    background-image:
+        repeating-linear-gradient(
+            60deg,
+            transparent 0 57px,
+            rgba(157, 120, 151, 0.1) 57px 60px
+        ),
+        repeating-linear-gradient(
+            -60deg,
+            transparent 0 57px,
+            rgba(157, 120, 151, 0.1) 57px 60px
+        ),
+        linear-gradient(#8862a1, #ffe0fb 60%, #f0ff7e 100%);
+    size: 100vh;
+}
+#title {
+    margin-top: 100px;
+    text-align: center;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    -webkit-text-stroke: 3px rgb(119, 66, 112);
+    font-size: 60px;
+    color: #ececec;
+}
+#create-div {
+    text-align: center;
+}
+#join-div {
+    text-align: center;
+}
 #go-home {
     position: absolute;
     right: 100px;
     top: 30px;
     padding: 5px;
+    align-self: center;
 }
 #go-edit {
     position: absolute;
