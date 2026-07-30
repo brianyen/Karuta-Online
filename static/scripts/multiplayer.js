@@ -14,6 +14,8 @@ let otherScoreEl = document.getElementById("other-score");
 let notificationsEl = document.getElementById("notifications");
 let playlistSelectEl = document.getElementById("playlistSelect");
 let volumeEl = document.getElementById("volume-slider");
+let helpEl = document.getElementById("help-popup");
+let gameEl = document.getElementById("game-ui")
 
 let images = {};
 let mapping = {};
@@ -667,7 +669,17 @@ function confirmNavigation(e) {
     return res;
 }
 
-function showHelp() {}
+function showHelp() {
+    console.log("showing help")
+    helpEl.style.display = "block";
+    gameEl.style.display = "none";
+}
+
+function hideHelp() {
+    console.log("hiding help")
+    helpEl.style.display = "none";
+    gameEl.style.display = "block";
+}
 
 function updateScores() {
     ownScoreEl.innerHTML = "You: " + ownScore;
