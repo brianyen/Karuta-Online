@@ -526,21 +526,12 @@ function createCardElement(songTitle) {
     cardImage.draggable = false;
     songCard.draggable = true;
 
-    cardText.height = 72;
+    cardText.height = 200;
     cardText.width = 104;
     
     let cardTitle = (mapping[songTitle] != undefined) ? mapping[songTitle] : songTitle;
 
     songCard.addEventListener("click", handleSongChoice);
-
-    songCard.addEventListener("dragenter", (event) => {
-        event.preventDefault()
-        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl) {
-            const draggedElementId = event.dataTransfer.getData("text/plain");
-            songCard.style.outline = "4px solid #6fb5cf";
-            songCard.style.outlineOffset = "-4px";
-        }
-    });
 
     addDragEvents(songCard);
 
@@ -605,9 +596,9 @@ function toggleReady() {
 function addDragEvents(songCard) {
     songCard.addEventListener("dragenter", (event) => {
         event.preventDefault()
-        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl) {
+        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl && dragged.parentElement == gameSpaceSelfEl) {
             const draggedElementId = event.dataTransfer.getData("text/plain");
-            songCard.style.outline = "8px solid #6fb5cf";
+            songCard.style.outline = "4px solid #6fb5cf";
             songCard.style.outlineOffset = "-4px";
         }
     });

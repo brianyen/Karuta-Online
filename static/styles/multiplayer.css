@@ -93,7 +93,6 @@ body {
     pointer-events: none;
 }
 .card-text {
-    height: 33%;
     width: 95%;
     bottom: 1px;
     background-color: white;
