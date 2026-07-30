@@ -655,6 +655,7 @@ function confirmNavigation(e) {
         e.altKey ||
         e.button !== 0
     ) {
+        console.log("exiting")
         return;
     }
 
@@ -662,8 +663,11 @@ function confirmNavigation(e) {
     if (res) {
         socket.emit('leave_room', { room: room_key, player_id: playerID });
     }
+    console.log(res);
     return res;
 }
+
+function showHelp() {}
 
 function updateScores() {
     ownScoreEl.innerHTML = "You: " + ownScore;

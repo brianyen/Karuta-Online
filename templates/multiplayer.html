@@ -14,7 +14,10 @@
     <div id="volume-div">
       Volume: <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.5">
     </div>
-    <a href="/" onclick="return confirmNavigation(event)"><button id="go-home" class="navigation">Home</button></a>
+    <div id="top-bar">
+      <a href="/" onclick="return confirmNavigation(event)" id="go-home" class="custom-button">Home</a>
+      <div onclick="showHelp()" id="go-help" class="custom-button">Help</div>
+    </div>
     <div id="game-header">
       <div id="readyDiv">
         <button id="ready" onclick="toggleReady()">Ready for Next Song</button>
