@@ -6,7 +6,7 @@ roomCodeEl.addEventListener("input", (event) => {
 })
 
 function sendCreateRequest() {
-    let deckName = playlistSelectEl.value
+    let deckName = playlistSelectEl.value;
     fetch("/create-room-rq", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,7 +70,7 @@ function loadPlaylistsList() {
     data.playlists.forEach((filename) => {
         let option = document.createElement("option");
         option.value = filename;
-        option.textContent = filename;
+        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');;
         playlistSelectEl.appendChild(option);
     });
     })

@@ -15,20 +15,21 @@ body {
         ),
         linear-gradient(#8862a1, #ffe0fb 60%, #f0ff7e 100%);
     size: 100vh;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
 #title {
     margin-top: 100px;
     text-align: center;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
     -webkit-text-stroke: 3px rgb(119, 66, 112);
     font-size: 60px;
     color: #ececec;
 }
-#create-div {
+#create-div, #join-div {
+    justify-content: center;
     text-align: center;
-}
-#join-div {
-    text-align: center;
+    display: flex;
+    gap: 5px;
+    margin: 3px;
 }
 #go-edit {
     position: absolute;
@@ -39,4 +40,14 @@ body {
 .resize {
     resize: both;
     overflow: auto;
+}
+.custom-button {
+    padding: 5px;
+    background-color: white;
+    border: 2px solid black;
+    padding: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    color: black;
+    width: fit-content;
 }
