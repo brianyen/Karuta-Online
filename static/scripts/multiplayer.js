@@ -14,6 +14,8 @@ let otherScoreEl = document.getElementById("other-score");
 let notificationsEl = document.getElementById("notifications");
 let playlistSelectEl = document.getElementById("playlistSelect");
 let volumeEl = document.getElementById("volume-slider");
+let helpEl = document.getElementById("help-popup");
+let gameEl = document.getElementById("game-ui")
 
 let images = {};
 let mapping = {};
@@ -526,21 +528,12 @@ function createCardElement(songTitle) {
     cardImage.draggable = false;
     songCard.draggable = true;
 
-    cardText.height = 72;
+    cardText.height = 200;
     cardText.width = 104;
     
     let cardTitle = (mapping[songTitle] != undefined) ? mapping[songTitle] : songTitle;
 
     songCard.addEventListener("click", handleSongChoice);
-
-    songCard.addEventListener("dragenter", (event) => {
-        event.preventDefault()
-        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl) {
-            const draggedElementId = event.dataTransfer.getData("text/plain");
-            songCard.style.outline = "4px solid #6fb5cf";
-            songCard.style.outlineOffset = "-4px";
-        }
-    });
 
     addDragEvents(songCard);
 
@@ -605,9 +598,9 @@ function toggleReady() {
 function addDragEvents(songCard) {
     songCard.addEventListener("dragenter", (event) => {
         event.preventDefault()
-        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl) {
+        if (correct && dragged != null && songCard.parentElement == gameSpaceSelfEl && dragged.parentElement == gameSpaceSelfEl) {
             const draggedElementId = event.dataTransfer.getData("text/plain");
-            songCard.style.outline = "8px solid #6fb5cf";
+            songCard.style.outline = "4px solid #6fb5cf";
             songCard.style.outlineOffset = "-4px";
         }
     });
@@ -664,6 +657,7 @@ function confirmNavigation(e) {
         e.altKey ||
         e.button !== 0
     ) {
+        console.log("exiting")
         return;
     }
 
@@ -671,7 +665,20 @@ function confirmNavigation(e) {
     if (res) {
         socket.emit('leave_room', { room: room_key, player_id: playerID });
     }
+    console.log(res);
     return res;
+}
+
+function showHelp() {
+    console.log("showing help")
+    helpEl.style.display = "block";
+    gameEl.style.display = "none";
+}
+
+function hideHelp() {
+    console.log("hiding help")
+    helpEl.style.display = "none";
+    gameEl.style.display = "block";
 }
 
 function updateScores() {

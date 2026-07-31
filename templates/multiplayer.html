@@ -7,34 +7,75 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/multiplayer.css') }}">
   </head>
   <body>
-    <div id="room-info">
-      <h1 class="pgram"><span>Karuta Room Code: {{ room }}</span></h1>
-      <h2 class="pgram"><span id="deckDisplay"></span></h2>
+    <div id="help-popup">
+      <div onclick="hideHelp()" class="custom-button" id="close-help">Close</div>
+      <p class="big-help">How to Play</p>
+      <p class="small-help">Basic Game Rules:</p>
+      <p class="text-help">
+        In Karuta, you have a deck of songs, and a card representing each song. 
+        Half of those cards are put on the board, with you and your opponent each getting a quarter of the total cards. 
+        A random sample from the first half of a random song will play, and you have to find the card for that song (if it's on the board) and click it as fast as you can, regardless of which side of the board it is on.
+        If you do not think the card is on the board, you can tap out. Once you tap out, you're done for the round.
+        <br><br>
+        By getting a song correct, you can remove it from the board. 
+        Your goal is to remove all the songs from your side of the board, so if you correctly click a song on your opponent's side of the board, you can choose a card on your side to send to your opponent.
+      </p>
+      <p class="small-help">Faults:</p>
+      <p class="text-help">
+        If you click the wrong card, and the correct card is on the <b>same</b> side you made your incorrect guess on, nothing happens. 
+        However, if you click the wrong card, and the correct card <b>not</b> on the same side, then you receive a "fault".
+        At the end of the round, for each fault you did, your opponent gets to send you a card as a penalty.
+        Each round, you can only get penalized for faults once for each side, so you cannot accumulate more than two fault penalties in a round.
+        <br><br>
+        Do note that even if you click the wrong card or fault, you're not out of the round yet. 
+        Unless your opponent finds the right card or you tap out, you can still keep going if you see the right card.
+      </p>
+      <p class="small-help">Game Functionality:</p>
+      <p class="text-help">
+        Click on the "Ready for Next Song" button to indicate you're ready to start the next round.
+        When the round starts, this button will be replaced with the "Tap Out" button, allowing you to tap out.
+        <br><br>
+        Mirroring a real life Karuta game, your side is the bottom side, and your opponent's is the top side. 
+        Once again, if you see the right card on the board, you should click it regardless of which side it's on.
+        When you need to send cards though, remember that you need to choose from your (the bottom) side.
+        <br><br>
+        You may drag and drop cards to swap their positions as long as you're only moving cards on your own side.
+        Currently, your opponent doesn't see what changes you make (they see the original formation), and you do not see what movements your opponents make.
+      </p>
     </div>
-    <div id="volume-div">
-      Volume: <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.5">
+    <div id="game-ui">
+      <div id="room-info">
+        <h1 class="pgram"><span>Karuta Room Code: {{ room }}</span></h1>
+        <h2 class="pgram"><span id="deckDisplay"></span></h2>
+      </div>
+      <div id="volume-div">
+        Volume: <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.5">
+      </div>
+      <div id="top-bar">
+        <a href="/" onclick="return confirmNavigation(event)" id="go-home" class="custom-button">Home</a>
+        <div onclick="showHelp()" id="go-help" class="custom-button">Help</div>
+      </div>
+      <div id="game-header">
+        <div id="readyDiv">
+          <button id="ready" onclick="toggleReady()">Ready for Next Song</button>
+          <input type="checkbox" id="readyCheckbox" onclick="return false;"/>
+        </div>
+        <div id="tapoutDiv" style="display: none">
+          <button id="tapout" onclick="tapOut()">Tap Out</button>
+        </div>
+        <div id="nextGameDiv" style="display: none">
+          <select id="playlistSelect"></select>
+          <button id="create-room" onclick="replayRoom()">Create a Room</button>
+        </div>
+        <div id="countdown"></div>
+        <div id="answer">Song Name:</div>
+        <div id="own-score">You:</div>
+        <div id="other-score">Opponent:</div>
+        <div id="notifications"></div>
+      </div>
+      <div id="game-space-opponent" class="game-space"></div>
+      <div id="game-space-self" class="game-space"></div>
     </div>
-    <a href="/" onclick="return confirmNavigation(event)"><button id="go-home" class="navigation">Home</button></a>
-    <div id="game-header">
-      <div id="readyDiv">
-        <button id="ready" onclick="toggleReady()">Ready for Next Song</button>
-        <input type="checkbox" id="readyCheckbox" onclick="return false;"/>
-      </div>
-      <div id="tapoutDiv" style="display: none">
-        <button id="tapout" onclick="tapOut()">Tap Out</button>
-      </div>
-      <div id="nextGameDiv" style="display: none">
-        <select id="playlistSelect"></select>
-        <button id="create-room" onclick="replayRoom()">Create a Room</button>
-      </div>
-      <div id="countdown"></div>
-      <div id="answer">Song Name:</div>
-      <div id="own-score">You:</div>
-      <div id="other-score">Opponent:</div>
-      <div id="notifications"></div>
-    </div>
-    <div id="game-space-opponent" class="game-space"></div>
-    <div id="game-space-self" class="game-space"></div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src=" {{ url_for('static', filename='scripts/multiplayer.js') }}"></script>
