@@ -21,11 +21,12 @@ body {
     -webkit-text-stroke: 1px rgb(119, 66, 112); 
     text-shadow: 1px 2px 2px gray;
     color: #ececec;
+    max-width: 70%;
 }
 #top-bar {
     position: absolute;
-    right: 40px;
-    top: 30px;
+    right: 20px;
+    top: 20px;
     display: flex;
     gap: 10px;
 }
@@ -156,4 +157,10 @@ body {
 .text-help {
     font-size: 18px;
     text-align: left;
+}
+@media (max-width: 768px) {
+  #game-header {
+    flex-direction: column; 
+    height: 400px;
+  }
 }

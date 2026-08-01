@@ -81,6 +81,7 @@ socket.on('2p_room', (e) => {
     }
 
     if (!init) {
+        init = true;
         initGameState(e);
     }
     init = true;
@@ -116,7 +117,8 @@ socket.on('start_playing', (e) => {
         currentNode = audioContext.createBufferSource();
         currentNode.buffer = currentSongBuff;
         currentNode.connect(gainControl);
-        currentNode.start(audioContext.currentTime, e.start_time);
+        songStart = audioContext.currentTime + 0.1
+        currentNode.start(songStart, e.start_time);
 
         readyDivEl.style.display = 'none';
         readyEl.checked = false;
@@ -125,7 +127,6 @@ socket.on('start_playing', (e) => {
         correct = false;
         faultedSelf = -1;
         faultedOpponent = -1;
-        songStart = Date.now();
         answerEl.innerHTML = "Now playing...";
 
         let card = document.getElementById(currentSong);
@@ -323,6 +324,7 @@ socket.on('re_emission', (e) => {
     faultedOpponent = -1;
     answerEl.innerHTML = "The page was reloaded, so this round is forfeited"
     socket.emit('sync_ready', { room: room_key, player_id: playerID })
+    init = true;
     initGameState(e);
     tapOut();
 })
@@ -463,12 +465,23 @@ function handleSongChoice(event) {
         target.id = "";
         target.draggable = false;
 
-        let timeClicked = Date.now()
-        let timeForCard = Math.round(timeClicked - songStart); 
+        let timeForCard;
+        let timestamp = audioContext.getOutputTimestamp?.();
+        console.log(`ts: ${timestamp}`)
+        if (timestamp && timestamp.contextTime > 0 && timestamp.performanceTime > 0) {
+            timeForCard = timestamp.contextTime + (event.timeStamp - timestamp.performanceTime) / 1000;
+        } else {
+            let latency = audioContext.outputLatency || audioContext.baseLatency || 0;
+            console.log(`latency: ${latency}`)
+            timeForCard = (audioContext.currentTime - latency) + (event.timeStamp - performance.now()) / 1000;
+        }
+
+        console.log(`time for card; ${timeForCard}, song start; ${songStart}`)
+        timeForCard = Math.round((timeForCard - songStart) * 1000) / 1000; 
 
         countdownEl.innerHTML = "Waiting for round results..."
         socket.emit('player_response', { player_id: playerID, room: room_key, response_time: timeForCard });
-        updateLogs(`TIME: You took ${timeForCard}ms to click on ${currentSong}`)
+        updateLogs(`TIME: You took ${timeForCard} seconds to click on ${currentSong}`)
         canTapOut = false;
         tapoutEl.disabled = true;
     } else if (!correct) {
