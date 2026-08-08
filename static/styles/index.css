@@ -37,6 +37,31 @@ body {
     top: 30px;
     padding: 5px;
 }
+#help-popup {
+    display: none;
+    position: relative;
+    width: 50%;
+    height: fit-content;
+    padding: 15px;
+    text-align: center;
+    left: 25%;
+    margin-top: 50px;
+    margin-bottom: 50px;
+    outline: 3px solid black;
+    background-color: white;
+    min-width: 250px;
+}
+#close-help {
+    position: relative;
+    justify-self: right;
+}
+#top-bar {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    display: flex;
+    gap: 10px;
+}
 .resize {
     resize: both;
     overflow: auto;
@@ -50,4 +75,15 @@ body {
     text-decoration: none;
     color: black;
     width: fit-content;
+}
+.big-help {
+    font-size: 30px;
+}
+.small-help {
+    font-size: 24px;
+    justify-self: left;
+}
+.text-help {
+    font-size: 18px;
+    text-align: left;
 }

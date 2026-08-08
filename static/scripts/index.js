@@ -1,4 +1,6 @@
 let roomCodeEl = document.getElementById("room-code-input");
+let helpEl = document.getElementById("help-popup");
+let menuEl = document.getElementById("index-menu");
 let playlistSelectEl = document.getElementById("playlistSelect");
 
 roomCodeEl.addEventListener("input", (event) => {
@@ -75,6 +77,18 @@ function loadPlaylistsList() {
     });
     })
     .catch((error) => console.error("Error:", error));
+}
+
+function showHelp() {
+    console.log("showing help")
+    helpEl.style.display = "block";
+    menuEl.style.display = "none";
+}
+
+function hideHelp() {
+    console.log("hiding help")
+    helpEl.style.display = "none";
+    menuEl.style.display = "block";
 }
 
 loadPlaylistsList();
