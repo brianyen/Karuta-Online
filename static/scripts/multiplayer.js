@@ -19,6 +19,7 @@ let gameEl = document.getElementById("game-ui")
 
 let images = {};
 let mapping = {};
+let logs = [];
 
 let correct = true;
 let dragged = null;
@@ -700,7 +701,11 @@ function updateScores() {
 }
 
 function updateLogs(newEntry) {
-    notificationsEl.innerHTML += (newEntry + "<br/>");
+    logs.push(newEntry);
+    let entry = document.createElement("div");
+    entry.className = "notifications-item";
+    entry.innerHTML += (newEntry + "<br/>");
+    notificationsEl.appendChild(entry);
     notificationsEl.scrollTop = notificationsEl.scrollHeight;
 }
 

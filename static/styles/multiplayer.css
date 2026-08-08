@@ -40,7 +40,7 @@ body {
     margin-bottom: 20px;
     height: 120px;
 }
-#game-header div {
+#game-header > div {
     flex: 1;
     padding: 5px;
     overflow-y: scroll;
@@ -74,6 +74,10 @@ body {
 #close-help {
     position: relative;
     justify-self: right;
+}
+#game-header > #notifications {
+    background-color: white;
+    padding: 0px;
 }
 .custom-button {
     padding: 5px;
@@ -157,6 +161,12 @@ body {
 .text-help {
     font-size: 18px;
     text-align: left;
+}
+.notifications-item {
+    background-color: white;
+}
+.notifications-item:nth-child(even) {
+    background-color: #e0e0e0;
 }
 @media (max-width: 768px) {
   #game-header {
