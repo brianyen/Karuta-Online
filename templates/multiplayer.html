@@ -46,7 +46,7 @@
     <div id="game-ui">
       <div id="room-info">
         <h1 class="pgram"><span>Karuta Room Code: {{ room }}</span></h1>
-        <h2 class="pgram"><span id="deckDisplay"></span></h2>
+        <h2 class="pgram"><span id="deck-display"></span></h2>
       </div>
       <div id="volume-div">
         Volume: <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.5">
@@ -56,15 +56,15 @@
         <div onclick="showHelp()" id="go-help" class="custom-button">Help</div>
       </div>
       <div id="game-header">
-        <div id="readyDiv">
+        <div id="ready-div">
           <button id="ready" onclick="toggleReady()">Ready for Next Song</button>
-          <input type="checkbox" id="readyCheckbox" onclick="return false;"/>
+          <input type="checkbox" id="ready-checkbox" onclick="return false;"/>
         </div>
-        <div id="tapoutDiv" style="display: none">
+        <div id="tapout-div" style="display: none">
           <button id="tapout" onclick="tapOut()">Tap Out</button>
         </div>
-        <div id="nextGameDiv" style="display: none">
-          <select id="playlistSelect"></select>
+        <div id="next-game-div" style="display: none">
+          <select id="playlist-select"></select>
           <button id="create-room" onclick="replayRoom()">Create a Room</button>
         </div>
         <div id="countdown"></div>

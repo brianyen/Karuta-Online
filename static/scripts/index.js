@@ -1,7 +1,7 @@
 let roomCodeEl = document.getElementById("room-code-input");
 let helpEl = document.getElementById("help-popup");
 let menuEl = document.getElementById("index-menu");
-let playlistSelectEl = document.getElementById("playlistSelect");
+let playlistSelectEl = document.getElementById("playlist-select");
 
 roomCodeEl.addEventListener("input", (event) => {
     event.target.value = event.target.value.toUpperCase();

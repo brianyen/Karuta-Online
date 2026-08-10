@@ -17,12 +17,9 @@ body {
     size: 100vh;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
-#title {
-    margin-top: 100px;
-    text-align: center;
-    -webkit-text-stroke: 3px rgb(119, 66, 112);
-    font-size: 60px;
-    color: #ececec;
+#close-help {
+    position: relative;
+    justify-self: right;
 }
 #create-div, #join-div {
     justify-content: center;
@@ -51,9 +48,12 @@ body {
     background-color: white;
     min-width: 250px;
 }
-#close-help {
-    position: relative;
-    justify-self: right;
+#title {
+    margin-top: 100px;
+    text-align: center;
+    -webkit-text-stroke: 3px rgb(119, 66, 112);
+    font-size: 60px;
+    color: #ececec;
 }
 #top-bar {
     position: absolute;
@@ -62,9 +62,8 @@ body {
     display: flex;
     gap: 10px;
 }
-.resize {
-    resize: both;
-    overflow: auto;
+.big-help {
+    font-size: 30px;
 }
 .custom-button {
     padding: 5px;
@@ -76,8 +75,9 @@ body {
     color: black;
     width: fit-content;
 }
-.big-help {
-    font-size: 30px;
+.resize {
+    resize: both;
+    overflow: auto;
 }
 .small-help {
     font-size: 24px;
