@@ -17,6 +17,32 @@ body {
         linear-gradient(#80bde3, #ffe0fb 60%, #9f73bf 100%);
     size: 100vh;
 }
+#chat {
+    background: #f8fafc;
+    border: 3px solid black;
+    height: 100%;
+    padding: 2px;
+    display: none;
+}
+#chat-div {
+    position: absolute;
+    right: 20px;
+    top: 55px;
+    width: 25%;
+    height: 40%;
+    z-index: 2;
+}
+#chat-entry {
+    display: flex;
+    gap: 3px;
+}
+#chat-history {
+    height: calc(100% - 35px);
+    overflow-y: scroll;
+}
+#chat-text {
+    width: calc(100% - 60px);
+}
 #close-help {
     position: relative;
     justify-self: right;
@@ -63,6 +89,10 @@ body {
     text-shadow: 1px 2px 2px gray;
     color: #ececec;
     max-width: 70%;
+}
+#toggle-chat {
+    justify-self: right;
+    margin-bottom: 3px;
 }
 #top-bar {
     position: absolute;
@@ -143,6 +173,12 @@ body {
 }
 .notifications-item:nth-child(even) {
     background-color: #e0e0e0;
+}
+.opponent-message {
+    color: #7b0c0c
+}
+.own-message {
+    color: #0c0c7b
 }
 .pgram {
     margin-left: -50px;

@@ -15,7 +15,11 @@ let notificationsEl = document.getElementById("notifications");
 let playlistSelectEl = document.getElementById("playlist-select");
 let volumeEl = document.getElementById("volume-slider");
 let helpEl = document.getElementById("help-popup");
-let gameEl = document.getElementById("game-ui")
+let gameEl = document.getElementById("game-ui");
+let chatEl = document.getElementById("chat");
+let chatHistoryEl = document.getElementById("chat-history");
+let chatTextEl = document.getElementById("chat-text");
+let chatEnterEl = document.getElementById("chat-enter");
 
 let images = {};
 let mapping = {};
@@ -350,6 +354,20 @@ socket.on('room_missing', () => [
 
 socket.on('room_full', () => {
     alert("issue while joining room, it may be full")
+})
+
+socket.on('confirm_message', (e) => {
+    let newMessage = document.createElement("div");
+    newMessage.className = "chat-message ";
+    if (e.source === playerID) {
+        newMessage.className += "own-message";
+        newMessage.innerHTML += `You: ${e.text}`;
+    } else {
+        newMessage.className += "opponent-message";
+        newMessage.innerHTML += `Opponent: ${e.text}`;
+    }
+    chatHistoryEl.appendChild(newMessage);
+    chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
 })
 
 socket.on('ping_check', (server_callback) => { server_callback(); })
@@ -764,6 +782,24 @@ function replayRoom() {
     .catch((error) => console.error("Error:", error));
 }
 
+function toggleChatVisibility() {
+    if (chatEl.style.display != "block") {
+        chatEl.style.display = "block";
+    } else {
+        chatEl.style.display = "none";
+    }
+}
+
+function sendChat() {
+    let message = chatTextEl.value;
+    chatTextEl.value = "";
+    if (message === "") {
+        return;
+    }
+
+    socket.emit('chat_message', { room: room_key, player_id: playerID, text: message });
+}
+
 function addWrappedCanvasText(context, text, x, y, widthLimit, yOffset) {
     let wordArray = text.split(" ")
     let currentLine = "";
@@ -801,5 +837,19 @@ function loadPlaylistsList() {
 volumeEl.addEventListener("change", (e) => {
     gainControl.gain.setTargetAtTime(parseFloat(e.target.value), audioContext.currentTime, 0.1);
 })
+
+chatEnterEl.addEventListener("keyup", (e) => {
+    event.preventDefault();
+    if (event.keyCode === 13) {
+        sendChat();
+    }
+});
+
+chatTextEl.addEventListener("keyup", (e) => {
+    event.preventDefault();
+    if (event.keyCode === 13) {
+        sendChat();
+    }
+});
 
 loadPlaylistsList();

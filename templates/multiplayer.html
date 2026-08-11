@@ -55,6 +55,16 @@
         <a href="/" onclick="return confirmNavigation(event)" id="go-home" class="custom-button">Home</a>
         <div onclick="showHelp()" id="go-help" class="custom-button">Help</div>
       </div>
+      <div id="chat-div">
+        <div id="toggle-chat" class="custom-button" onclick="toggleChatVisibility()">Toggle Chat</div>
+        <div id="chat">
+          <div id="chat-history"></div>
+          <div id="chat-entry">
+            <input type="text" id="chat-text" placeholder="Start typing..."></input>
+            <div id="chat-enter" class="custom-button" onclick="sendChat()">Send</div>
+          </div>
+        </div>
+      </div>
       <div id="game-header">
         <div id="ready-div">
           <button id="ready" onclick="toggleReady()">Ready for Next Song</button>
