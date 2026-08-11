@@ -393,6 +393,14 @@ def handle_passes(data):
   emit('update_passes', {"to_switch": data.get('cards')}, to=room_key)
   emit_room_status_switch(room_dict, room_key)
 
+@socketio.on('chat_message')
+def handle_chat_message(data):
+  player_id = data.get('player_id')
+  room_key = data.get('room')
+  message = data.get('text')
+
+  emit('confirm_message', { "text": message, "source": player_id }, to=room_key)
+
 @app.route('/')
 def home():
   return render_template("index.html")

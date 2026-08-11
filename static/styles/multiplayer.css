@@ -17,18 +17,35 @@ body {
         linear-gradient(#80bde3, #ffe0fb 60%, #9f73bf 100%);
     size: 100vh;
 }
-#room-info {
-    -webkit-text-stroke: 1px rgb(119, 66, 112); 
-    text-shadow: 1px 2px 2px gray;
-    color: #ececec;
-    max-width: 70%;
+#chat {
+    background: #f8fafc;
+    border: 3px solid black;
+    height: 100%;
+    padding: 2px;
+    display: none;
 }
-#top-bar {
+#chat-div {
     position: absolute;
     right: 20px;
-    top: 20px;
+    top: 55px;
+    width: 25%;
+    height: 40%;
+    z-index: 2;
+}
+#chat-entry {
     display: flex;
-    gap: 10px;
+    gap: 3px;
+}
+#chat-history {
+    height: calc(100% - 35px);
+    overflow-y: scroll;
+}
+#chat-text {
+    width: calc(100% - 60px);
+}
+#close-help {
+    position: relative;
+    justify-self: right;
 }
 #game-header {
     margin-left: 20px;
@@ -40,19 +57,15 @@ body {
     margin-bottom: 20px;
     height: 120px;
 }
-#game-header div {
+#game-header > div {
     flex: 1;
     padding: 5px;
     overflow-y: scroll;
     background-color: #f8fafc;
 }
-#volume-div {
-    margin-left: 20px;
-    border: 3px solid black;
-    border-bottom: none;
+#game-header > #notifications {
     background-color: white;
-    width: fit-content;
-    padding: 3px;
+    padding: 0px;
 }
 #game-space-self {
     border-top: 0px;
@@ -71,35 +84,33 @@ body {
     background-color: white;
     min-width: 250px;
 }
-#close-help {
-    position: relative;
+#room-info {
+    -webkit-text-stroke: 1px rgb(119, 66, 112); 
+    text-shadow: 1px 2px 2px gray;
+    color: #ececec;
+    max-width: 70%;
+}
+#toggle-chat {
     justify-self: right;
+    margin-bottom: 3px;
 }
-.custom-button {
-    padding: 5px;
+#top-bar {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    display: flex;
+    gap: 10px;
+}
+#volume-div {
+    margin-left: 20px;
+    border: 3px solid black;
+    border-bottom: none;
     background-color: white;
-    border: 2px solid black;
-    padding: 4px;
-    cursor: pointer;
-    text-decoration: none;
-    color: black;
     width: fit-content;
+    padding: 3px;
 }
-.right-align {
-    float: right;
-}
-.pgram {
-    margin-left: -50px;
-    padding: 5px;
-    padding-left: 70px;
-    background-color: #a46bb8;
-    padding-right: 20px;
-    width: fit-content;
-    transform: skewX(-20deg);
-}
-.pgram > span {
-    display: inline-block;
-    transform: skewX(20deg);
+.big-help {
+    font-size: 30px;
 }
 .card {
     width: 110px;
@@ -128,6 +139,16 @@ body {
     background-color: white;
     pointer-events: none;
 }
+.custom-button {
+    padding: 5px;
+    background-color: white;
+    border: 2px solid black;
+    padding: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    color: black;
+    width: fit-content;
+}
 .game-space {
     border: 3px solid black;
     position: relative;
@@ -147,8 +168,33 @@ body {
         );
     display: none;
 }
-.big-help {
-    font-size: 30px;
+.notifications-item {
+    background-color: white;
+}
+.notifications-item:nth-child(even) {
+    background-color: #e0e0e0;
+}
+.opponent-message {
+    color: #7b0c0c
+}
+.own-message {
+    color: #0c0c7b
+}
+.pgram {
+    margin-left: -50px;
+    padding: 5px;
+    padding-left: 70px;
+    background-color: #a46bb8;
+    padding-right: 20px;
+    width: fit-content;
+    transform: skewX(-20deg);
+}
+.pgram > span {
+    display: inline-block;
+    transform: skewX(20deg);
+}
+.right-align {
+    float: right;
 }
 .small-help {
     font-size: 24px;

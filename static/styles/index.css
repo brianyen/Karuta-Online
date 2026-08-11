@@ -17,12 +17,9 @@ body {
     size: 100vh;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
-#title {
-    margin-top: 100px;
-    text-align: center;
-    -webkit-text-stroke: 3px rgb(119, 66, 112);
-    font-size: 60px;
-    color: #ececec;
+#close-help {
+    position: relative;
+    justify-self: right;
 }
 #create-div, #join-div {
     justify-content: center;
@@ -37,9 +34,36 @@ body {
     top: 30px;
     padding: 5px;
 }
-.resize {
-    resize: both;
-    overflow: auto;
+#help-popup {
+    display: none;
+    position: relative;
+    width: 50%;
+    height: fit-content;
+    padding: 15px;
+    text-align: center;
+    left: 25%;
+    margin-top: 50px;
+    margin-bottom: 50px;
+    outline: 3px solid black;
+    background-color: white;
+    min-width: 250px;
+}
+#title {
+    margin-top: 100px;
+    text-align: center;
+    -webkit-text-stroke: 3px rgb(119, 66, 112);
+    font-size: 60px;
+    color: #ececec;
+}
+#top-bar {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    display: flex;
+    gap: 10px;
+}
+.big-help {
+    font-size: 30px;
 }
 .custom-button {
     padding: 5px;
@@ -50,4 +74,16 @@ body {
     text-decoration: none;
     color: black;
     width: fit-content;
+}
+.resize {
+    resize: both;
+    overflow: auto;
+}
+.small-help {
+    font-size: 24px;
+    justify-self: left;
+}
+.text-help {
+    font-size: 18px;
+    text-align: left;
 }

@@ -1,24 +1,29 @@
 let gameSpaceOpponentEl = document.getElementById("game-space-opponent");
 let gameSpaceSelfEl = document.getElementById("game-space-self");
-let readyEl = document.getElementById("readyCheckbox");
+let readyEl = document.getElementById("ready-checkbox");
 let readyButtonEl = document.getElementById("ready");
-let readyDivEl = document.getElementById("readyDiv");
+let readyDivEl = document.getElementById("ready-div");
 let tapoutEl = document.getElementById("tapout");
-let tapoutDivEl = document.getElementById("tapoutDiv");
-let deckDisplayEl = document.getElementById("deckDisplay");
-let nextGameDivEl = document.getElementById("nextGameDiv");
+let tapoutDivEl = document.getElementById("tapout-div");
+let deckDisplayEl = document.getElementById("deck-display");
+let nextGameDivEl = document.getElementById("next-game-div");
 let countdownEl = document.getElementById("countdown");
 let answerEl = document.getElementById("answer");
 let ownScoreEl = document.getElementById("own-score");
 let otherScoreEl = document.getElementById("other-score");
 let notificationsEl = document.getElementById("notifications");
-let playlistSelectEl = document.getElementById("playlistSelect");
+let playlistSelectEl = document.getElementById("playlist-select");
 let volumeEl = document.getElementById("volume-slider");
 let helpEl = document.getElementById("help-popup");
-let gameEl = document.getElementById("game-ui")
+let gameEl = document.getElementById("game-ui");
+let chatEl = document.getElementById("chat");
+let chatHistoryEl = document.getElementById("chat-history");
+let chatTextEl = document.getElementById("chat-text");
+let chatEnterEl = document.getElementById("chat-enter");
 
 let images = {};
 let mapping = {};
+let logs = [];
 
 let correct = true;
 let dragged = null;
@@ -349,6 +354,20 @@ socket.on('room_missing', () => [
 
 socket.on('room_full', () => {
     alert("issue while joining room, it may be full")
+})
+
+socket.on('confirm_message', (e) => {
+    let newMessage = document.createElement("div");
+    newMessage.className = "chat-message ";
+    if (e.source === playerID) {
+        newMessage.className += "own-message";
+        newMessage.innerHTML += `You: ${e.text}`;
+    } else {
+        newMessage.className += "opponent-message";
+        newMessage.innerHTML += `Opponent: ${e.text}`;
+    }
+    chatHistoryEl.appendChild(newMessage);
+    chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
 })
 
 socket.on('ping_check', (server_callback) => { server_callback(); })
@@ -700,7 +719,11 @@ function updateScores() {
 }
 
 function updateLogs(newEntry) {
-    notificationsEl.innerHTML += (newEntry + "<br/>");
+    logs.push(newEntry);
+    let entry = document.createElement("div");
+    entry.className = "notifications-item";
+    entry.innerHTML += (newEntry + "<br/>");
+    notificationsEl.appendChild(entry);
     notificationsEl.scrollTop = notificationsEl.scrollHeight;
 }
 
@@ -759,6 +782,24 @@ function replayRoom() {
     .catch((error) => console.error("Error:", error));
 }
 
+function toggleChatVisibility() {
+    if (chatEl.style.display != "block") {
+        chatEl.style.display = "block";
+    } else {
+        chatEl.style.display = "none";
+    }
+}
+
+function sendChat() {
+    let message = chatTextEl.value;
+    chatTextEl.value = "";
+    if (message === "") {
+        return;
+    }
+
+    socket.emit('chat_message', { room: room_key, player_id: playerID, text: message });
+}
+
 function addWrappedCanvasText(context, text, x, y, widthLimit, yOffset) {
     let wordArray = text.split(" ")
     let currentLine = "";
@@ -796,5 +837,19 @@ function loadPlaylistsList() {
 volumeEl.addEventListener("change", (e) => {
     gainControl.gain.setTargetAtTime(parseFloat(e.target.value), audioContext.currentTime, 0.1);
 })
+
+chatEnterEl.addEventListener("keyup", (e) => {
+    event.preventDefault();
+    if (event.keyCode === 13) {
+        sendChat();
+    }
+});
+
+chatTextEl.addEventListener("keyup", (e) => {
+    event.preventDefault();
+    if (event.keyCode === 13) {
+        sendChat();
+    }
+});
 
 loadPlaylistsList();
