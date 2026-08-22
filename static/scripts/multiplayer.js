@@ -17,6 +17,7 @@ let volumeEl = document.getElementById("volume-slider");
 let helpEl = document.getElementById("help-popup");
 let gameEl = document.getElementById("game-ui");
 let chatEl = document.getElementById("chat");
+let chatDivEl = document.getElementById("chat-div");
 let chatHistoryEl = document.getElementById("chat-history");
 let chatTextEl = document.getElementById("chat-text");
 let chatEnterEl = document.getElementById("chat-enter");
@@ -722,7 +723,7 @@ function updateLogs(newEntry) {
     logs.push(newEntry);
     let entry = document.createElement("div");
     entry.className = "notifications-item";
-    entry.innerHTML += (newEntry + "<br/>");
+    entry.innerHTML += newEntry;
     notificationsEl.appendChild(entry);
     notificationsEl.scrollTop = notificationsEl.scrollHeight;
 }
@@ -785,8 +786,10 @@ function replayRoom() {
 function toggleChatVisibility() {
     if (chatEl.style.display != "block") {
         chatEl.style.display = "block";
+        chatDivEl.style.height = "40%";
     } else {
         chatEl.style.display = "none";
+        chatDivEl.style.height = "auto";
     }
 }
 
