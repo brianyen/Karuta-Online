@@ -10,3 +10,4 @@ gevent-websocket
 mutagen
 dotenv
 gunicorn
+packaging
