@@ -51,7 +51,10 @@ def add_player_to_room(socketio, room_dict, player_id, room_code, request):
                 "cards_to_pass": 0,
                 "response_time": -1,
                 "fault_status": 0,
-                "rtts": deque(maxlen=5)
+                "rtts": deque(maxlen=5),
+                "fault_count": 0,
+                "song_times": {},
+                "contested_song": []
             }
             room_dict["players_sid"][request.sid] = player_id
             ping_cycle(socketio, room_dict, player_id, request)
@@ -190,6 +193,7 @@ def pass_song(room_dict, player_id, room_code):
 
             if current_song in player_songs:
                 update["remove"] = current_song
+                room_entry["reroll_count"] += 1
                 player_songs.remove(current_song)
                 if len(unplayed_songs) >= 1:
                     next_song = unplayed_songs.pop(0)
@@ -259,13 +263,23 @@ def handle_card_buffer(socketio, room_dict, player_id, room_code):
 
     if (other_response_time < 0) or (other_response_time > player_response_time):
         print("checking if need to send card over:", room_entry["current_song"])
-        if room_entry["current_song"] not in room_dict["players"][player_id]["cards"]:
-          room_dict["players"][player_id]["cards_to_pass"] = 1
+        with room_entry["lock"]:
+            if room_entry["current_song"] not in room_dict["players"][player_id]["cards"]:
+                room_dict["players"][player_id]["cards_to_pass"] = 1
+            room_dict["players"][player_id]["song_times"][room_entry["current_song"]] = player_response_time
+            if other_response_time > 0 and (len(player_entry["contested_song"]) < 2 or 
+                    other_response_time - player_response_time < player_entry["contested_song"][1]):
+                player_entry["contested_song"] = [room_entry["current_song"], other_response_time - player_response_time]
         declare_round_winner(room_dict, player_id, room_code)
     else:
         print("checking if need to send card over:", room_entry["current_song"])
-        if room_entry["current_song"] not in room_dict["players"][other_player_id]["cards"]:
-          room_dict["players"][other_player_id]["cards_to_pass"] = 1
+        with room_entry["lock"]:
+            if room_entry["current_song"] not in room_dict["players"][other_player_id]["cards"]:
+                room_dict["players"][other_player_id]["cards_to_pass"] = 1
+            room_dict["players"][other_player_id]["song_times"][room_entry["current_song"]] = other_response_time
+            if player_response_time > 0 and (len(other_player_entry["contested_song"]) < 2 or 
+                    player_response_time - other_response_time < other_player_entry["contested_song"][1]):
+                other_player_entry["contested_song"] = [room_entry["current_song"], player_response_time - other_response_time]
         declare_round_winner(room_dict, other_player_id, room_code)
 
 def reset_players(room_dict, room_code):
@@ -294,7 +308,8 @@ def init_room(room_dict, room_code, deck):
       "ready_count": 0,
       "sync_count": 0,
       "current_song": "",
-      "lock": Lock()
+      "lock": Lock(),
+      "reroll_count": 0
     }
 
     with open(os.path.join(METADATA_FOLDER, deck), 'r') as f:
@@ -343,6 +358,29 @@ def emit_room_status_switch(room_dict, room_code, winner=""):
                 code = ''.join(random.choices(LETTERS, k=4)).upper()
             send_params["winner"] = winner
             send_params["next_code"] = code
+            stats = {}
+            for id in room_entry["player_info"]:
+                player_entry = room_dict["players"][id]
+                print(player_entry)
+                fastest_song = ""
+                fastest_time = -1
+                average_time = 0
+                for song, time in player_entry["song_times"].items():
+                    average_time += time
+                    if fastest_time < 0 or time < fastest_time:
+                        fastest_time = time
+                        fastest_song = song
+                if len(player_entry["song_times"]) > 0:
+                    average_time /= len(player_entry["song_times"])
+
+                stats[id] = {
+                    "fault_count": player_entry["fault_count"],
+                    "reroll_count": room_entry["reroll_count"],
+                    "fastest_song": [fastest_song, fastest_time],
+                    "contested_song": player_entry["contested_song"],
+                    "average_time": average_time
+                }
+            send_params["stats"] = stats
             emit('game_finished', send_params, to=room_code)
             count = len(room_entry["player_info"])
             for _ in range(count):

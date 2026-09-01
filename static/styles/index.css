@@ -62,7 +62,7 @@ body {
     display: flex;
     gap: 10px;
 }
-.big-help {
+.big-popup {
     font-size: 30px;
 }
 .custom-button {
@@ -79,11 +79,11 @@ body {
     resize: both;
     overflow: auto;
 }
-.small-help {
+.small-popup {
     font-size: 24px;
     justify-self: left;
 }
-.text-help {
+.popup-text {
     font-size: 18px;
     text-align: left;
 }

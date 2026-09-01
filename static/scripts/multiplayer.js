@@ -15,6 +15,13 @@ let notificationsEl = document.getElementById("notifications");
 let playlistSelectEl = document.getElementById("playlist-select");
 let volumeEl = document.getElementById("volume-slider");
 let helpEl = document.getElementById("help-popup");
+let finishEl = document.getElementById("finish-popup");
+let finishMsgEl = document.getElementById("finish-message");
+let faultCountEl = document.getElementById("fault-count");
+let rerollCountEl = document.getElementById("reroll-count");
+let fastestCardEl = document.getElementById("fastest-card");
+let contestedCardEl = document.getElementById("contested-card");
+let averageTimeEl = document.getElementById("average-time");
 let gameEl = document.getElementById("game-ui");
 let chatEl = document.getElementById("chat");
 let chatDivEl = document.getElementById("chat-div");
@@ -50,6 +57,7 @@ let currentSong = "";
 let correctSide = "";
 let nextRoom = ""
 let init = false;
+let addReplacementHandlers = false;
 
 let ownScore = -1; // eventually replace with tracking full card decks i think
 let otherScore = -1;
@@ -336,13 +344,36 @@ socket.on('re_emission', (e) => {
 })
 
 socket.on('game_finished', (e) => {
+    finishEl.style.display = "block";
     if (e.winner === playerID) {
-        countdownEl.innerHTML = "Game is finished! You won.";
+        finishMsgEl.innerHTML = "Game is finished! You won.";
     } else if (e.winner === "") {
-        countdownEl.innerHTML = "Game is finished!";
+        finishMsgEl.innerHTML = "Game is finished!";
     } else {
-        countdownEl.innerHTML = "Game is finished! You lost."
+        finishMsgEl.innerHTML = "Game is finished! You lost."
     }
+    let stats = e.stats[playerID]
+    if (stats == null || Object.keys(stats).length == 0) {
+        console.error("stats was somehow bugged")
+        console.log(e)
+    } else if (e.winner != "") {
+        faultCountEl.innerHTML = `You faulted ${stats.fault_count} times`;
+        rerollCountEl.innerHTML = `You rerolled ${stats.reroll_count} cards`;
+        fastest_song_arr = stats.fastest_song;
+        if (fastest_song_arr.length == 2 && fastest_song_arr[1] >= 0) {
+            songTitle = mapping[fastest_song_arr[0]] || fastest_song_arr[0];
+            fastestCardEl.innerHTML = `You got the song ${songTitle} in ${Math.round(fastest_song_arr[1] * 1000) / 1000} seconds`;
+        }
+        contested_song_arr = stats.contested_song;
+        if (contested_song_arr.length == 2) {
+            songTitle = mapping[contested_song_arr[0]] || contested_song_arr[0];
+            contestedCardEl.innerHTML = `You won the song ${songTitle} by ${Math.round(contested_song_arr[1] * 1000) / 1000} seconds`;
+        }
+        if (stats.average_time > 0) {
+            averageTimeEl.innerHTML = `You averaged ${Math.round(stats.average_time * 1000) / 1000} seconds for the songs you got`;
+        }
+    }
+    document.addEventListener('keyup', hideFinishHelper);
     readyDivEl.style.display = 'none';
     tapoutDivEl.style.display = 'none';
     nextGameDivEl.style.display = 'block';
@@ -416,55 +447,61 @@ async function passCardsHandler(e) {
         return;
     }
 
-    function passCardsClickHandler(event) {
-        if (toPass <= 0) {
-        }
-        let target = (event.target.id === "") ? event.target.parentElement : event.target;
-        for (let i = 0; i < toPassCards.length; i++) {
-            if (toPassCards[i] === target) {
-                toPassCards.splice(i, 1);
-                target.style.outline = "";
-                target.style.outlineOffset = "";
-                toPass++;
-                countdownEl.innerHTML = `Please choose ${toPass} cards to give to your opponent.`;
-                return;
-            }
-        }
-
-        toPassCards.push(target)
-        target.style.outline = "4px solid #237554";
-        target.style.outlineOffset = "-4px";
-        toPass--;
-
-        if (toPass === 0) {
-            let params = [];
-            passActive = false;
-            for (let card of toPassCards) {
-                card.style.outline = "";
-                card.style.outlineOffset = "";
-                params.push(card.id);
-            }
-            toPassCards = [];
-            for (let card of gameSpaceSelfEl.children) {
-                if (card.id == "") {
-                    continue;
-                } 
-                card.removeEventListener("click", passCardsClickHandler);
-                card.addEventListener("click", handleSongChoice);
-            }
-            socket.emit('pass_done', { cards: params, room: room_key, player_id: playerID });
-        } else {
-            countdownEl.innerHTML = `Please choose ${toPass} cards to give to your opponent.`;
-        }
-    }
-
     passActive = true;
     for (let card of gameSpaceSelfEl.children) {
         if (card.id == "") {
             continue;
         } 
+        if (card.style.outline != "") {
+            console.log("skipping");
+            addReplacementHandlers = true;
+            continue;
+        }
         card.removeEventListener("click", handleSongChoice);
         card.addEventListener("click", passCardsClickHandler);
+    }
+}
+
+function passCardsClickHandler(event) {
+    if (toPass <= 0) {
+    }
+    let target = (event.target.id === "") ? event.target.parentElement : event.target;
+    for (let i = 0; i < toPassCards.length; i++) {
+        if (toPassCards[i] === target) {
+            toPassCards.splice(i, 1);
+            target.style.outline = "";
+            target.style.outlineOffset = "";
+            toPass++;
+            countdownEl.innerHTML = `Please choose ${toPass} cards to give to your opponent.`;
+            return;
+        }
+    }
+
+    toPassCards.push(target)
+    target.style.outline = "4px solid #237554";
+    target.style.outlineOffset = "-4px";
+    toPass--;
+
+    if (toPass === 0) {
+        let params = [];
+        passActive = false;
+        for (let card of toPassCards) {
+            card.style.outline = "";
+            card.style.outlineOffset = "";
+            params.push(card.id);
+        }
+        toPassCards = [];
+        for (let card of gameSpaceSelfEl.children) {
+            if (card.id == "") {
+                continue;
+            } 
+            card.removeEventListener("click", passCardsClickHandler);
+            card.addEventListener("click", handleSongChoice);
+        }
+        addReplacementHandlers = false;
+        socket.emit('pass_done', { cards: params, room: room_key, player_id: playerID });
+    } else {
+        countdownEl.innerHTML = `Please choose ${toPass} cards to give to your opponent.`;
     }
 }
 
@@ -501,7 +538,7 @@ function handleSongChoice(event) {
 
         countdownEl.innerHTML = "Waiting for round results..."
         socket.emit('player_response', { player_id: playerID, room: room_key, response_time: timeForCard });
-        updateLogs(`TIME: You took ${timeForCard} seconds to click on ${currentSong}`)
+        updateLogs(`TIME: You took ${timeForCard} seconds to click on ${mapping[currentSong] || currentSong}`)
         canTapOut = false;
         tapoutEl.disabled = true;
     } else if (!correct) {
@@ -566,7 +603,11 @@ function createCardElement(songTitle) {
     
     let cardTitle = (mapping[songTitle] != undefined) ? mapping[songTitle] : songTitle;
 
-    songCard.addEventListener("click", handleSongChoice);
+    if (addReplacementHandlers) {
+        songCard.addEventListener("click", passCardsClickHandler);
+    } else {
+        songCard.addEventListener("click", handleSongChoice);
+    }
 
     addDragEvents(songCard);
 
@@ -714,6 +755,17 @@ function hideHelp() {
     gameEl.style.display = "block";
 }
 
+function hideFinishHelper(e) {
+    if (e.key === "Escape") {
+        hideFinish();
+    }
+}
+
+function hideFinish() {
+    finishEl.style.display = "none";
+    document.removeEventListener("keyup", hideFinishHelper);
+}
+
 function updateScores() {
     ownScoreEl.innerHTML = "You: " + ownScore;
     otherScoreEl.innerHTML = "Opponent: " + otherScore;
@@ -827,10 +879,11 @@ function loadPlaylistsList() {
     .then((response) => response.json())
     .then((data) => {
     playlistSelectEl.innerHTML = "";
+    data.playlists.sort();
     data.playlists.forEach((filename) => {
         let option = document.createElement("option");
         option.value = filename;
-        option.textContent = filename;
+        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
         playlistSelectEl.appendChild(option);
     });
     })
