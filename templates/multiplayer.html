@@ -9,9 +9,9 @@
   <body>
     <div id="help-popup">
       <div onclick="hideHelp()" class="custom-button" id="close-help">Close</div>
-      <p class="big-help">How to Play</p>
-      <p class="small-help">Basic Game Rules:</p>
-      <p class="text-help">
+      <p class="big-popup">How to Play</p>
+      <p class="small-popup">Basic Game Rules:</p>
+      <p class="popup-text">
         In Karuta, you have a deck of songs, and a card representing each song. 
         Half of those cards are put on the board, with you and your opponent each getting a quarter of the total cards. 
         A random sample from the first half of a random song will play, and you have to find the card for that song (if it's on the board) and click it as fast as you can, regardless of which side of the board it is on.
@@ -20,8 +20,8 @@
         By getting a song correct, you can remove it from the board. 
         Your goal is to remove all the songs from your side of the board, so if you correctly click a song on your opponent's side of the board, you can choose a card on your side to send to your opponent.
       </p>
-      <p class="small-help">Faults:</p>
-      <p class="text-help">
+      <p class="small-popup">Faults:</p>
+      <p class="popup-text">
         If you click the wrong card, and the correct card is on the <b>same</b> side you made your incorrect guess on, nothing happens. 
         However, if you click the wrong card, and the correct card <b>not</b> on the same side, then you receive a "fault".
         At the end of the round, for each fault you did, your opponent gets to send you a card as a penalty.
@@ -30,8 +30,8 @@
         Do note that even if you click the wrong card or fault, you're not out of the round yet. 
         Unless your opponent finds the right card or you tap out, you can still keep going if you see the right card.
       </p>
-      <p class="small-help">Game Functionality:</p>
-      <p class="text-help">
+      <p class="small-popup">Game Functionality:</p>
+      <p class="popup-text">
         Click on the "Ready for Next Song" button to indicate you're ready to start the next round.
         When the round starts, this button will be replaced with the "Tap Out" button, allowing you to tap out.
         <br><br>
@@ -44,6 +44,15 @@
       </p>
     </div>
     <div id="game-ui">
+      <div id="finish-popup">
+        <p class="small-popup" id="finish-message"></p>
+        <p class="text-popup" id="fault-count"></p>
+        <p class="text-popup" id="reroll-count"></p>
+        <p class="text-popup" id="fastest-card"></p>
+        <p class="text-popup" id="contested-card"></p>
+        <p class="text-popup" id="average-time"></p>
+        <div id="hide-finish" onclick="hideFinish()" class="custom-button">Close</div>
+      </div>
       <div id="room-info">
         <h1 class="pgram"><span>Karuta Room Code: {{ room }}</span></h1>
         <h2 class="pgram"><span id="deck-display"></span></h2>

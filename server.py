@@ -247,6 +247,16 @@ def player_response(data):
         print("checking if need to send card over:", room_entry["current_song"])
         if room_entry["current_song"] not in room_dict["players"][winner_id]["cards"]:
           room_dict["players"][winner_id]["cards_to_pass"] = 1
+        if winner_id == player_id:
+          player_entry["song_times"][room_entry["current_song"]] = response_time
+          if other_response_time > 0 and (len(player_entry["contested_song"]) < 2 or 
+              other_response_time - response_time < player_entry["contested_song"][1]):
+            player_entry["contested_song"] = [room_entry["current_song"], other_response_time - response_time]
+        else:
+          other_player_entry["song_times"][room_entry["current_song"]] = other_response_time
+          if response_time > 0 and (len(other_player_entry["contested_song"]) < 2 or 
+              response_time - other_response_time < other_player_entry["contested_song"][1]):
+            other_player_entry["contested_song"] = [room_entry["current_song"], response_time - other_response_time]
       declare_round_winner(room_dict, winner_id, room_key)
       return
     case Callback.BUFFER:
@@ -283,6 +293,8 @@ def handle_faults(data):
   with room_entry["lock"]:
     fault_status = data.get('fault_status')
     player_entry = room_dict["players"].get(player_id)
+    if fault_status > 0:
+      player_entry["fault_count"] += fault_status
 
     if player_entry == None or room_entry == None:
       # hopefully only activates in special cases (game is over, some weird disconnection)
@@ -503,5 +515,5 @@ def get_custom_images():
   return jsonify(out)
 
 if __name__ == '__main__':
-  socketio.run(app, debug=True)
+  socketio.run(app, debug=False)
 

@@ -46,6 +46,17 @@ body {
     position: relative;
     justify-self: right;
 }
+#finish-popup {
+    position: fixed;
+    width: 30%;
+    left: 35%;
+    height: auto;
+    background-color: #f8fafc;
+    border: 3px solid black;
+    padding: 5px;
+    z-index: 3;
+    display: none;
+}
 #game-header {
     margin-left: 20px;
     margin-right: 20px;
@@ -111,7 +122,7 @@ body {
     width: fit-content;
     padding: 3px;
 }
-.big-help {
+.big-popup {
     font-size: 30px;
 }
 .card {
@@ -199,11 +210,11 @@ body {
 .right-align {
     float: right;
 }
-.small-help {
+.small-popup {
     font-size: 24px;
     justify-self: left;
 }
-.text-help {
+.popup-text {
     font-size: 18px;
     text-align: left;
 }
