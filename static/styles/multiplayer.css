@@ -162,6 +162,10 @@ body {
     color: black;
     width: fit-content;
 }
+.custom-button:hover {
+    border: 2px solid maroon;
+    outline: 1px solid maroon;;
+}
 .game-space {
     border: 3px solid black;
     position: relative;

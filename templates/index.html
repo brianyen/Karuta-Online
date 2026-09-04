@@ -3,13 +3,14 @@
   <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Karuta Player</title>
+    <title>Karuta Online</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">
   </head>
   <body>
     <div id="help-popup">
       <div onclick="hideHelp()" class="custom-button" id="close-help">Close</div>
       <p class="big-popup">How to Play</p>
+      <p class="popup-text">Either choose a deck from the drop down menu to create a room, or type in a four letter code to join someone else's room.</p>
       <p class="small-popup">Basic Game Rules:</p>
       <p class="popup-text">
         In Karuta, you have a deck of songs, and a card representing each song. 
@@ -47,14 +48,17 @@
       <div id="top-bar">
         <div onclick="showHelp()" id="go-help" class="custom-button">Help</div>
       </div>
-      <h1 id="title">Karuta</h1>
+      <h1 id="title">Karuta Online</h1>
       <div id="create-div">
       <select id="playlist-select"></select>
-      <button id="create-room" onclick="sendCreateRequest()">Create a Room</button>
+      <div id="create-room" class="custom-button" onclick="sendCreateRequest()">Create a Room</div>
       </div>
       <div id="join-div">
       <input type="text" id="room-code-input" placeholder="Enter a Room Code"/>
-      <button id="join-room" onclick="sendJoinRequest()">Join a Room</button>
+      <div id="join-room" class="custom-button" onclick="sendJoinRequest()">Join a Room</div>
+      </div>
+      <div id="deck-viewer-div">
+      <div id="view_decks" class="custom-button" onclick="sendToDeckViewer()">View Decks</div>
       </div>
     </div>
     <script src="{{ url_for('static', filename='scripts/index.js') }}"></script>

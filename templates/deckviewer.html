@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Karuta Room</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/deckviewer.css') }}">
+</head>
+<body>
+    <div id="top-bar">
+        <a href="/" onclick="return sendHome(event)" id="go-home" class="custom-button">Home</a>
+    </div>
+    <div class="white-text">
+        <h1 class="pgram"><span>Karuta Deck Viewer</span></h1>
+    </div>
+    <div id="options-div">
+        <select id="playlist-select"></select>
+        <div onclick="loadDeck()" class="custom-button">Load</div>
+    </div>
+    <div>
+        <table id="deck-table">
+            <tr class="white-text">
+                <th>Original File Name</th>
+                <th>Custom Display Title</th>
+                <th>Card Image (if exists)</th>
+            </tr>
+        </table>
+    </div>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src=" {{ url_for('static', filename='scripts/deckviewer.js') }}"></script>
+</body>
+</html>

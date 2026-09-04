@@ -76,15 +76,14 @@
       </div>
       <div id="game-header">
         <div id="ready-div">
-          <button id="ready" onclick="toggleReady()">Ready for Next Song</button>
-          <input type="checkbox" id="ready-checkbox" onclick="return false;"/>
+          <div id="ready" class="custom-button" onclick="toggleReady()">Ready for Next Song</div>
         </div>
         <div id="tapout-div" style="display: none">
-          <button id="tapout" onclick="tapOut()">Tap Out</button>
+          <div id="tapout" class="custom-button" onclick="tapOut()">Tap Out</div>
         </div>
         <div id="next-game-div" style="display: none">
           <select id="playlist-select"></select>
-          <button id="create-room" onclick="replayRoom()">Create a Room</button>
+          <div id="create-room" class="custom-button" onclick="replayRoom()">Create a Room</div>
         </div>
         <div id="countdown"></div>
         <div id="answer">Song Name:</div>
