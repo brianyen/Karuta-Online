@@ -577,10 +577,10 @@ function addNextCard(toReplace = null, nextCardTitle = null, faultParams = {}) {
             let next = document.getElementById(nextCardTitle);
             toReplace.style.outline = "4px solid red";
             toReplace.style.outlineOffset = "-4px";
+            canReady = true;
             setTimeout(() => {
                 toReplace.style.outline = "";
                 toReplace.style.outlineOffset = "";
-                canReady = true;
                 timeoutActive = false;
                 resolve(true);
             }, 1500);
