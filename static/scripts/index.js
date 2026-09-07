@@ -63,6 +63,43 @@ function sendJoinRequest() {
     .catch((error) => console.error("Error:", error));
 }
 
+function sendToDeckViewer() {
+    fetch("/deckviewer", {
+        method: "GET"
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        if (response.url == undefined || response.url == "") {
+            throw new Error('Returned URL not ok')
+        }
+        window.location.href = response.url;
+    })
+    .catch((error) => console.error("Error:", error));
+}
+
+function addTabs() {
+    let buttons = document.getElementsByClassName("custom-button");
+    for (let el of buttons) {
+        el.tabIndex = 0;
+        el.addEventListener('keydown', (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                el.click();
+            } else if (e.key === " ") {
+                e.preventDefault();
+            }   
+        })
+        el.addEventListener('keyup', (e) => {
+            if (e.key === " ") {
+                e.preventDefault();
+                el.click();
+            }
+        })
+    }
+}
+
 function loadPlaylistsList() {
     fetch("/get-playlists")
     .then((response) => response.json())
@@ -92,3 +129,4 @@ function hideHelp() {
 }
 
 loadPlaylistsList();
+addTabs();

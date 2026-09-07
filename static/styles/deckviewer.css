@@ -1,0 +1,125 @@
+body {
+    margin: 0;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    min-height: 110vh;
+    background-color: #f8fafc;
+    background-image:
+        repeating-linear-gradient(
+            60deg,
+            transparent 0 57px,
+            rgba(157, 120, 151, 0.1) 57px 60px
+        ),
+        repeating-linear-gradient(
+            -60deg,
+            transparent 0 57px,
+            rgba(157, 120, 151, 0.1) 57px 60px
+        ),
+        linear-gradient(#80bde3, #ffe0fb 60%, #9f73bf 100%);
+    size: 100vh;
+}
+table {
+    border-collapse: collapse;
+    margin: 20px;
+    text-align: left;
+    width: calc(100% - 40px);
+}
+tr {
+    background-color: white;
+}
+tr:nth-child(odd) {
+    background-color: #e0e0e0;
+}
+td {
+    border: 2px solid rgb(78, 42, 73);
+    padding: 6px;
+}
+th {
+    padding: 10px;
+    border: 2px solid rgb(78, 42, 73);
+    background-color: #a46bb8;
+    font-size: 23px;
+}
+#options-div {
+    margin-left: 20px;
+    margin-right: 20px;
+    display: flex;
+    gap: 5px;
+}
+#top-bar {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    display: flex;
+    gap: 10px;
+}
+#volume-div {
+    margin-left: 20px;
+    border: 3px solid black;
+    border-bottom: none;
+    background-color: white;
+    width: fit-content;
+    padding: 3px;
+}
+.card {
+    width: 110px;
+    height: 220px;
+    margin: 5px;
+    border: 2px solid gray;
+    overflow-wrap: break-word;
+    overflow-y: hidden;
+    text-align: center;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: white;
+}
+.card-image {
+    height: 50%;
+    top: 1px;
+    max-width: 100%;
+    max-height: 67%;
+    pointer-events: none;
+    object-fit: contain;
+    pointer-events: none;
+}
+.card-text {
+    width: 95%;
+    bottom: 1px;
+    background-color: white;
+    pointer-events: none;
+}
+.custom-button {
+    padding: 5px;
+    background-color: white;
+    border: 2px solid black;
+    padding: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    color: black;
+    width: fit-content;
+}
+.custom-button:hover {
+    border: 2px solid maroon;
+    outline: 1px solid maroon;;
+}
+.pgram {
+    margin-left: -50px;
+    padding: 5px;
+    padding-left: 70px;
+    background-color: #a46bb8;
+    padding-right: 20px;
+    width: fit-content;
+    transform: skewX(-20deg);
+}
+.pgram > span {
+    display: inline-block;
+    transform: skewX(20deg);
+}
+.right-align {
+    float: right;
+}
+.white-text {
+    -webkit-text-stroke: 1px rgb(119, 66, 112); 
+    text-shadow: 1px 2px 2px gray;
+    color: #ececec;
+    max-width: 70%;
+}

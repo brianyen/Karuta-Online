@@ -1,6 +1,5 @@
 let gameSpaceOpponentEl = document.getElementById("game-space-opponent");
 let gameSpaceSelfEl = document.getElementById("game-space-self");
-let readyEl = document.getElementById("ready-checkbox");
 let readyButtonEl = document.getElementById("ready");
 let readyDivEl = document.getElementById("ready-div");
 let tapoutEl = document.getElementById("tapout");
@@ -58,6 +57,8 @@ let correctSide = "";
 let nextRoom = ""
 let init = false;
 let addReplacementHandlers = false;
+let canTapOut = true;
+let canReady = true;
 
 let ownScore = -1; // eventually replace with tracking full card decks i think
 let otherScore = -1;
@@ -86,12 +87,13 @@ socket.on('1p_room', (e) => {
 
 socket.on('2p_room', (e) => {
     tapoutDivEl.style.display = "none";
-    tapoutEl.disabled = false;
+    canTapOut = true;
+    tapoutEl.style.backgroundColor = "white";
     correct = true;
     readyDivEl.style.display = "block";
 
     if (!timeoutActive) {
-        readyButtonEl.disabled = false;
+        canReady = true;
     }
 
     if (!init) {
@@ -135,9 +137,10 @@ socket.on('start_playing', (e) => {
         currentNode.start(songStart, e.start_time);
 
         readyDivEl.style.display = 'none';
-        readyEl.checked = false;
+        readyButtonEl.style.backgroundColor = "white";
         tapoutDivEl.style.display = 'block';
-        tapoutEl.disabled = false;
+        canTapOut = true;
+        tapoutEl.style.backgroundColor = "white";
         correct = false;
         faultedSelf = -1;
         faultedOpponent = -1;
@@ -238,7 +241,8 @@ socket.on('round_results', (e) => {
     updateScores();
 
     correct = true;
-    tapoutEl.disabled = true;
+    canTapOut = false;
+    tapoutEl.style.backgroundColor = "#d0d0d0";
 
     faultedSelf = -1;
     faultedOpponent = -1;
@@ -331,7 +335,7 @@ socket.on('re_emission', (e) => {
     deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
     countdownEl.innerHTML = "Round Started"
     readyDivEl.style.display = 'none';
-    readyEl.checked = false;
+    readyButtonEl.style.backgroundColor = "#d0d0d0";
     tapoutDivEl.style.display = 'block';
     correct = true;
     faultedSelf = -1;
@@ -406,7 +410,7 @@ socket.on('ping_check', (server_callback) => { server_callback(); })
 
 async function startSyncHandler(e) {
     try {
-        readyButtonEl.disabled = true;
+        canReady = false;
         countdown.innerHTML = "Syncing audio tracks..."
         
         if (currentNode) {
@@ -434,10 +438,11 @@ async function passCardsHandler(e) {
     init = true;
 
     tapoutDivEl.style.display = "none";
-    tapoutEl.disabled = false;
+    canTapOut = true;
+    tapoutEl.style.backgroundColor = "white";
     correct = true;
     readyDivEl.style.display = "none";
-    readyButtonEl.disabled = true;
+    canReady = false;
 
     toPass = e.passes[playerID];
     if (toPass > 0) {
@@ -540,7 +545,7 @@ function handleSongChoice(event) {
         socket.emit('player_response', { player_id: playerID, room: room_key, response_time: timeForCard });
         updateLogs(`TIME: You took ${timeForCard} seconds to click on ${mapping[currentSong] || currentSong}`)
         canTapOut = false;
-        tapoutEl.disabled = true;
+        tapoutEl.style.backgroundColor = "#d0d0d0";
     } else if (!correct) {
         wrongCards.push(target);
         target.style.outline = "4px solid red";
@@ -564,7 +569,7 @@ function addNextCard(toReplace = null, nextCardTitle = null, faultParams = {}) {
 
         toReplace.style.outline = "4px solid red";
         toReplace.style.outlineOffset = "-4px";
-        readyButtonEl.disabled = true;
+        canReady = false;
         correct = true;
         timeoutActive = true;
         setTimeout(() => {
@@ -572,10 +577,10 @@ function addNextCard(toReplace = null, nextCardTitle = null, faultParams = {}) {
             let next = document.getElementById(nextCardTitle);
             toReplace.style.outline = "4px solid red";
             toReplace.style.outlineOffset = "-4px";
+            canReady = true;
             setTimeout(() => {
                 toReplace.style.outline = "";
                 toReplace.style.outlineOffset = "";
-                readyButtonEl.disabled = false;
                 timeoutActive = false;
                 resolve(true);
             }, 1500);
@@ -656,11 +661,16 @@ async function loadCustom() {
 }
 
 function toggleReady() {
-    let checkedStatus = !readyEl.checked;
-    readyEl.checked = checkedStatus;
+    if (!canReady) {
+        return;
+    }
+    console.log(readyButtonEl.style.backgroundColor);
+    let checkedStatus = readyButtonEl.style.backgroundColor != "#d0d0d0" && readyButtonEl.style.backgroundColor != "rgb(208, 208, 208)";
     if (checkedStatus) {
+        readyButtonEl.style.backgroundColor = "#d0d0d0";
         socket.emit('player_ready', { player_id: playerID, room: room_key });
     } else {
+        readyButtonEl.style.backgroundColor = "white";
         socket.emit('player_unready', { player_id: playerID, room: room_key });
     }
 
@@ -717,10 +727,15 @@ function addDragEvents(songCard) {
 }
 
 function tapOut() {
+    if (!canTapOut) {
+        return;
+    }
     correct = true;
     countdownEl.innerHTML = ("Waiting for round results...")
     socket.emit('player_response', { player_id: playerID, room: room_key, response_time: -2 })
-    tapoutEl.disabled = true;
+    canTapOut = false;
+    tapoutEl.style.backgroundColor = "#d0d0d0";
+    console.log("click");
 }
 
 function confirmNavigation(e) {
@@ -890,6 +905,28 @@ function loadPlaylistsList() {
     .catch((error) => console.error("Error:", error));
 }
 
+function addTabs() {
+    let buttons = document.getElementsByClassName("custom-button");
+    for (let el of buttons) {
+        el.tabIndex = 0;
+        // problematic right now
+        /*el.addEventListener('keydown', (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                el.click();
+            } else if (e.key === " ") {
+                e.preventDefault();
+            }   
+        })
+        el.addEventListener('keyup', (e) => {
+            if (e.key === " ") {
+                e.preventDefault();
+                el.click();
+            }
+        })*/
+    }
+}
+
 volumeEl.addEventListener("change", (e) => {
     gainControl.gain.setTargetAtTime(parseFloat(e.target.value), audioContext.currentTime, 0.1);
 })
@@ -909,3 +946,4 @@ chatTextEl.addEventListener("keyup", (e) => {
 });
 
 loadPlaylistsList();
+addTabs();

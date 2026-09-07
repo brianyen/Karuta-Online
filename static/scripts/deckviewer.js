@@ -1,0 +1,155 @@
+let playlistSelectEl = document.getElementById("playlist-select");
+let tableEl = document.getElementById("deck-table");
+
+function sendHome() {
+    fetch("/", {
+        method: "GET"
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        if (response.url == undefined || response.url == "") {
+            throw new Error('Returned URL not ok')
+        }
+        window.location.href = response.url;
+    })
+    .catch((error) => console.error("Error:", error));
+}
+
+function loadPlaylistsList() {
+    fetch("/get-playlists")
+    .then((response) => response.json())
+    .then((data) => {
+    playlistSelectEl.innerHTML = "";
+    data.playlists.sort();
+    data.playlists.forEach((filename) => {
+        let option = document.createElement("option");
+        option.value = filename;
+        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+        playlistSelectEl.appendChild(option);
+    });
+    })
+    .catch((error) => console.error("Error:", error));
+}
+
+function loadDeck() {
+    let deckName = playlistSelectEl.value;
+    if (deckName == null || deckName === "") {
+        console.error("No deck selected from dropdown menu");
+        return;
+    }
+
+    let toRemove = [];
+    for (child of tableEl.children) {
+        if (child.id != "") {
+            toRemove.push(child);
+        }
+    }
+
+    for (node of toRemove) {
+        tableEl.removeChild(node);
+    }
+
+    fetch(`/load-playlist?filename=${encodeURIComponent(deckName)}`)
+    .then(response => {
+        return response.json()
+    })
+    .then(data => {
+        if (data.songs == null) {
+            console.error("Didn't receive any songs from server");
+        }
+        console.log(data.songs.length);
+        data.songs.sort();
+        for (let song of data.songs) {
+            let row = document.createElement("tr");
+            row.id = song;
+
+            let c1 = document.createElement("td");
+            c1.className = "fileName";
+            let c2 = document.createElement("td");
+            c2.className = "displayTitle";
+            let c3 = document.createElement("td");
+            c3.className = "cardImage";
+
+            c1.innerHTML = song;
+            
+            row.appendChild(c1);
+            row.appendChild(c2);
+            row.appendChild(c3);
+            tableEl.appendChild(row);
+        }
+
+        loadCustom(deckName);
+    })
+}
+
+async function loadCustom(deckName) {
+    return new Promise((resolve) => {
+        fetch(`/get-mapping?filename=${encodeURIComponent(deckName)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.log("No custom text");
+            }
+
+            for (let originalName of Object.keys(data)) {
+                let row = document.getElementById(originalName);
+                
+                try {
+                    let cell = row.getElementsByClassName("displayTitle")[0];
+                    cell.innerHTML = data[originalName];
+                } catch {
+                    console.log("cell removed before it could be filled in");
+                }
+            }
+
+            fetch(`/get-images?filename=${encodeURIComponent(deckName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.log("No custom images");
+                    resolve(true);
+                } else {
+                    Object.keys(data).forEach((k) => {
+                        let row = document.getElementById(k);
+                        try {
+                            let cell = row.getElementsByClassName("cardImage")[0];
+                            let img = document.createElement("img");
+                            img.style.width = "100px";
+                            img.style.height = "100px";
+                            img.src = data[k];
+                            cell.appendChild(img);
+                        } catch {
+                            console.log("cell removed before it couldbe filled in");
+                        }
+                    })
+                }
+            });
+        });
+    })
+}
+
+function addTabs() {
+    let buttons = document.getElementsByClassName("custom-button");
+    for (let el of buttons) {
+        el.tabIndex = 0;
+        el.addEventListener('keydown', (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                el.click();
+            } else if (e.key === " ") {
+                e.preventDefault();
+            }   
+        })
+        el.addEventListener('keyup', (e) => {
+            if (e.key === " ") {
+                e.preventDefault();
+                el.click();
+            }
+        })
+    }
+}
+
+loadPlaylistsList();
+addTabs();

@@ -428,6 +428,10 @@ def multiplayer():
     return render_template("multiplayer.html", room=room_code)
   return jsonify({"error": "Room invalid"}), 500
 
+@app.route('/deckviewer')
+def view_decks():
+  return render_template("deckviewer.html")
+
 @app.route('/create-room-rq', methods=['POST'])
 def create_room():
   try:

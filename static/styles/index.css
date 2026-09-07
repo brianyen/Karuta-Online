@@ -21,7 +21,7 @@ body {
     position: relative;
     justify-self: right;
 }
-#create-div, #join-div {
+#create-div, #join-div, #deck-viewer-div {
     justify-content: center;
     text-align: center;
     display: flex;
@@ -74,6 +74,10 @@ body {
     text-decoration: none;
     color: black;
     width: fit-content;
+}
+.custom-button:hover {
+    border: 2px solid maroon;
+    outline: 1px solid maroon;;
 }
 .resize {
     resize: both;
