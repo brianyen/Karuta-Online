@@ -49,17 +49,25 @@
         Currently, your opponent doesn't see what changes you make (they see the original formation), and you do not see what movements your opponents make.
       </p>
     </div>
+    <div id="deck-select-popup">
+      <p class="text-popup">Please select a deck before creating a room.</p>
+    </div>
     <div id="index-menu">
       <div id="top-bar">
         <div onclick="showHelp()" id="go-help" class="custom-button">Help</div>
       </div>
       <h1 id="title">Karuta Online</h1>
       <div id="create-div">
-      <select id="playlist-select"></select>
+
+      <div id="playlist-select-div">
+        <div class="toggle-dropdown">Choose a Deck</div>
+        <div class="options-dropdown"></div>
+      </div>
+
       <div id="create-room" class="custom-button" onclick="sendCreateRequest()">Create a Room</div>
       </div>
       <div id="join-div">
-      <input type="text" id="room-code-input" placeholder="Enter a Room Code"/>
+      <input type="text" id="room-code-input" placeholder="Enter a Room Code" autocomplete="off"/>
       <div id="join-room" class="custom-button" onclick="sendJoinRequest()">Join a Room</div>
       </div>
       <div id="deck-viewer-div">

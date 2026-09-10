@@ -1,14 +1,42 @@
 let roomCodeEl = document.getElementById("room-code-input");
 let helpEl = document.getElementById("help-popup");
 let menuEl = document.getElementById("index-menu");
-let playlistSelectEl = document.getElementById("playlist-select");
+let deckSelectPopUpEl = document.getElementById("deck-select-popup");
+let playlistSelectDivEl = document.getElementById("playlist-select-div");
+let toggleDropdownEl = document.querySelector(".toggle-dropdown");
+let optionsDropdownEl = document.querySelector(".options-dropdown");
+
+let deckName = null;
+
+document.addEventListener("click", (event) => {
+    if (!playlistSelectDivEl.contains(event.target)) {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+});
 
 roomCodeEl.addEventListener("input", (event) => {
     event.target.value = event.target.value.toUpperCase();
+});
+
+toggleDropdownEl.addEventListener("click", () => {
+    if (optionsDropdownEl.style.display != "block") {
+        optionsDropdownEl.style.display = "block";
+        toggleDropdownEl.classList.toggle('open');
+    } else {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
 })
 
 function sendCreateRequest() {
-    let deckName = playlistSelectEl.value;
+    if (deckName == null) {
+        deckSelectPopUpEl.style.display = "block";
+        setTimeout(() => {
+            deckSelectPopUpEl.style.display = "none";
+        }, 1500);
+        return;
+    }
     fetch("/create-room-rq", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,13 +132,17 @@ function loadPlaylistsList() {
     fetch("/get-playlists")
     .then((response) => response.json())
     .then((data) => {
-    playlistSelectEl.innerHTML = "";
     data.playlists.sort();
     data.playlists.forEach((filename) => {
-        let option = document.createElement("option");
-        option.value = filename;
-        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');;
-        playlistSelectEl.appendChild(option);
+        let option = document.createElement("div");
+        option.setAttribute("data-val", filename);
+        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+        option.addEventListener('click', (e) => {
+            toggleDropdownEl.textContent = e.target.getAttribute("data-val").replace(/\.[a-zA-Z0-9]+$/, '');
+            deckName = e.target.getAttribute("data-val");
+            optionsDropdownEl.style.display = 'none';
+        })
+        optionsDropdownEl.appendChild(option);
     });
     })
     .catch((error) => console.error("Error:", error));
