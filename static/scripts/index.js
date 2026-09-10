@@ -141,6 +141,7 @@ function loadPlaylistsList() {
             toggleDropdownEl.textContent = e.target.getAttribute("data-val").replace(/\.[a-zA-Z0-9]+$/, '');
             deckName = e.target.getAttribute("data-val");
             optionsDropdownEl.style.display = 'none';
+            toggleDropdownEl.classList.remove('open');
         })
         optionsDropdownEl.appendChild(option);
     });
@@ -149,13 +150,11 @@ function loadPlaylistsList() {
 }
 
 function showHelp() {
-    console.log("showing help")
     helpEl.style.display = "block";
     menuEl.style.display = "none";
 }
 
 function hideHelp() {
-    console.log("hiding help")
     helpEl.style.display = "none";
     menuEl.style.display = "block";
 }

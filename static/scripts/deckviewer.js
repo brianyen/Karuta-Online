@@ -1,5 +1,26 @@
-let playlistSelectEl = document.getElementById("playlist-select");
 let tableEl = document.getElementById("deck-table");
+let playlistSelectDivEl = document.getElementById("playlist-select-div");
+let toggleDropdownEl = document.querySelector(".toggle-dropdown");
+let optionsDropdownEl = document.querySelector(".options-dropdown");
+
+let deckName = null;
+
+document.addEventListener("click", (event) => {
+    if (!playlistSelectDivEl.contains(event.target)) {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+});
+
+toggleDropdownEl.addEventListener("click", () => {
+    if (optionsDropdownEl.style.display != "block") {
+        optionsDropdownEl.style.display = "block";
+        toggleDropdownEl.classList.toggle('open');
+    } else {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+})
 
 function sendHome() {
     fetch("/", {
@@ -21,20 +42,28 @@ function loadPlaylistsList() {
     fetch("/get-playlists")
     .then((response) => response.json())
     .then((data) => {
-    playlistSelectEl.innerHTML = "";
-    data.playlists.sort();
-    data.playlists.forEach((filename) => {
-        let option = document.createElement("option");
-        option.value = filename;
-        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
-        playlistSelectEl.appendChild(option);
-    });
+        data.playlists.sort();
+        data.playlists.forEach((filename) => {
+            if (deckName == null) {
+                deckName = filename;
+            }
+            toggleDropdownEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            let option = document.createElement("div");
+            option.setAttribute("data-val", filename);
+            option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            option.addEventListener('click', (e) => {
+                toggleDropdownEl.textContent = e.target.getAttribute("data-val").replace(/\.[a-zA-Z0-9]+$/, '');
+                deckName = e.target.getAttribute("data-val");
+                optionsDropdownEl.style.display = 'none';
+                toggleDropdownEl.classList.remove('open');
+            })
+            optionsDropdownEl.appendChild(option);
+        });
     })
     .catch((error) => console.error("Error:", error));
 }
 
 function loadDeck() {
-    let deckName = playlistSelectEl.value;
     if (deckName == null || deckName === "") {
         console.error("No deck selected from dropdown menu");
         return;
@@ -59,7 +88,6 @@ function loadDeck() {
         if (data.songs == null) {
             console.error("Didn't receive any songs from server");
         }
-        console.log(data.songs.length);
         data.songs.sort();
         for (let song of data.songs) {
             let row = document.createElement("tr");

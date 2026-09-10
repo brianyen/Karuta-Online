@@ -11,7 +11,6 @@ let answerEl = document.getElementById("answer");
 let ownScoreEl = document.getElementById("own-score");
 let otherScoreEl = document.getElementById("other-score");
 let notificationsEl = document.getElementById("notifications");
-let playlistSelectEl = document.getElementById("playlist-select");
 let volumeEl = document.getElementById("volume-slider");
 let helpEl = document.getElementById("help-popup");
 let finishEl = document.getElementById("finish-popup");
@@ -27,6 +26,9 @@ let chatDivEl = document.getElementById("chat-div");
 let chatHistoryEl = document.getElementById("chat-history");
 let chatTextEl = document.getElementById("chat-text");
 let chatEnterEl = document.getElementById("chat-enter");
+let playlistSelectDivEl = document.getElementById("playlist-select-div");
+let toggleDropdownEl = document.querySelector(".toggle-dropdown");
+let optionsDropdownEl = document.querySelector(".options-dropdown");
 
 let images = {};
 let mapping = {};
@@ -54,7 +56,8 @@ let currentSongBuff = null;
 let currentNode = null;
 let currentSong = "";
 let correctSide = "";
-let nextRoom = ""
+let nextRoom = "";
+let nextDeckName = "";
 let init = false;
 let addReplacementHandlers = false;
 let canTapOut = true;
@@ -458,7 +461,6 @@ async function passCardsHandler(e) {
             continue;
         } 
         if (card.style.outline != "") {
-            console.log("skipping");
             addReplacementHandlers = true;
             continue;
         }
@@ -529,16 +531,12 @@ function handleSongChoice(event) {
 
         let timeForCard;
         let timestamp = audioContext.getOutputTimestamp?.();
-        console.log(`ts: ${timestamp}`)
         if (timestamp && timestamp.contextTime > 0 && timestamp.performanceTime > 0) {
             timeForCard = timestamp.contextTime + (event.timeStamp - timestamp.performanceTime) / 1000;
         } else {
             let latency = audioContext.outputLatency || audioContext.baseLatency || 0;
-            console.log(`latency: ${latency}`)
             timeForCard = (audioContext.currentTime - latency) + (event.timeStamp - performance.now()) / 1000;
         }
-
-        console.log(`time for card; ${timeForCard}, song start; ${songStart}`)
         timeForCard = Math.round((timeForCard - songStart) * 1000) / 1000; 
 
         countdownEl.innerHTML = "Waiting for round results..."
@@ -664,7 +662,6 @@ function toggleReady() {
     if (!canReady) {
         return;
     }
-    console.log(readyButtonEl.style.backgroundColor);
     let checkedStatus = readyButtonEl.style.backgroundColor != "#d0d0d0" && readyButtonEl.style.backgroundColor != "rgb(208, 208, 208)";
     if (checkedStatus) {
         readyButtonEl.style.backgroundColor = "#d0d0d0";
@@ -735,7 +732,6 @@ function tapOut() {
     socket.emit('player_response', { player_id: playerID, room: room_key, response_time: -2 })
     canTapOut = false;
     tapoutEl.style.backgroundColor = "#d0d0d0";
-    console.log("click");
 }
 
 function confirmNavigation(e) {
@@ -746,7 +742,6 @@ function confirmNavigation(e) {
         e.altKey ||
         e.button !== 0
     ) {
-        console.log("exiting")
         return;
     }
 
@@ -754,18 +749,15 @@ function confirmNavigation(e) {
     if (res) {
         socket.emit('leave_room', { room: room_key, player_id: playerID });
     }
-    console.log(res);
     return res;
 }
 
 function showHelp() {
-    console.log("showing help")
     helpEl.style.display = "block";
     gameEl.style.display = "none";
 }
 
 function hideHelp() {
-    console.log("hiding help")
     helpEl.style.display = "none";
     gameEl.style.display = "block";
 }
@@ -828,11 +820,10 @@ function replayRoom() {
         console.log("Attempting to replay but the next room's code is not found")
         return;
     }
-    let deckName = playlistSelectEl.value
     fetch("/replay-room-rq", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deck: deckName, code: nextRoom })
+        body: JSON.stringify({ deck: nextDeckName, code: nextRoom })
     })
     .then(response => {
         if (!response.ok) {
@@ -893,14 +884,23 @@ function loadPlaylistsList() {
     fetch("/get-playlists")
     .then((response) => response.json())
     .then((data) => {
-    playlistSelectEl.innerHTML = "";
-    data.playlists.sort();
-    data.playlists.forEach((filename) => {
-        let option = document.createElement("option");
-        option.value = filename;
-        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
-        playlistSelectEl.appendChild(option);
-    });
+        data.playlists.sort();
+        data.playlists.forEach((filename) => {
+            if (nextDeckName == null) {
+                nextDeckName = filename;
+            }
+            toggleDropdownEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            let option = document.createElement("div");
+            option.setAttribute("data-val", filename);
+            option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            option.addEventListener('click', (e) => {
+                toggleDropdownEl.textContent = e.target.getAttribute("data-val").replace(/\.[a-zA-Z0-9]+$/, '');
+                nextDeckName = e.target.getAttribute("data-val");
+                optionsDropdownEl.style.display = 'none';
+                toggleDropdownEl.classList.remove('open');
+            })
+            optionsDropdownEl.appendChild(option);
+        });
     })
     .catch((error) => console.error("Error:", error));
 }
@@ -944,6 +944,23 @@ chatTextEl.addEventListener("keyup", (e) => {
         sendChat();
     }
 });
+
+document.addEventListener("click", (event) => {
+    if (!playlistSelectDivEl.contains(event.target)) {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+});
+
+toggleDropdownEl.addEventListener("click", () => {
+    if (optionsDropdownEl.style.display != "block") {
+        optionsDropdownEl.style.display = "block";
+        toggleDropdownEl.classList.toggle('open');
+    } else {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+})
 
 loadPlaylistsList();
 addTabs();
