@@ -39,6 +39,11 @@ th {
     background-color: #a46bb8;
     font-size: 23px;
 }
+#deck-filter {
+    padding: 1px;
+    width: 100%;
+    box-sizing: border-box;
+}
 #options-div {
     margin-left: 20px;
     margin-right: 20px;
@@ -47,6 +52,12 @@ th {
 }
 #playlist-select-div {
     position: relative;
+}
+#toggle-text {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 #top-bar {
     position: absolute;
@@ -103,6 +114,11 @@ th {
 .custom-button:hover {
     border: 2px solid maroon;
     outline: 1px solid maroon;;
+}
+.deck-item {
+    overflow-x: scroll;
+    white-space: nowrap;
+    text-overflow: scroll;
 }
 .options-dropdown {
     display: none;
@@ -169,20 +185,26 @@ th {
     color: #ececec;
     max-width: 70%;
 }
+.text-entry {
+    border: 2px solid black;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+.text-entry:hover {
+    border: 2px solid maroon;
+    outline: 1px solid maroon;
+}
 .toggle-dropdown {
-    min-width: 150px;
-    padding: 5px;
+    appearance: none;
+    min-width: 175px;
+    max-width: 175px;
+    padding: 5px 20px 5px 5px;
+    box-sizing: border-box;
     background-color: white;
     border: 2px solid black;
-    padding: 4px;
     cursor: pointer;
     text-decoration: none;
     color: black;
-    width: fit-content;
-    overflow-x: hidden;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    position: relative;
 }
 .toggle-dropdown:hover {
     border: 2px solid maroon;
@@ -192,9 +214,13 @@ th {
     content: "";
     width: 7px;
     height: 7px;
+    left: calc(100% - 15px);
     clip-path: polygon(86.6% 0, 86.6% 100%, 0 50%);
     background-color: darkgray;
     pointer-events: none;
+    position: absolute;
+    right: 12px;
+    top: calc(50% - 3px);
 }
 .toggle-dropdown.open::after {
     transform: rotate(-90deg);

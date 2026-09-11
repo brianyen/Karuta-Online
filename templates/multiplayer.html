@@ -88,8 +88,12 @@
         </div>
         <div id="next-game-div" style="display: none">
           <div id="playlist-select-div">
-              <div class="toggle-dropdown">Choose a Deck</div>
-              <div class="options-dropdown"></div>
+              <div class="toggle-dropdown">
+                <span id="toggle-text">Choose a Deck</span>
+              </div>
+              <div class="options-dropdown">
+                <input type="text" placeholder="Filter Deck Names" autocomplete="off" id="deck-filter" class="text-entry"/>
+              </div>
           </div>
           <div id="create-room" class="custom-button" onclick="replayRoom()">Create a Room</div>
         </div>

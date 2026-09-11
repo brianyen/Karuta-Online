@@ -2,7 +2,8 @@ let tableEl = document.getElementById("deck-table");
 let playlistSelectDivEl = document.getElementById("playlist-select-div");
 let toggleDropdownEl = document.querySelector(".toggle-dropdown");
 let optionsDropdownEl = document.querySelector(".options-dropdown");
-
+let deckFilterEl = document.getElementById("deck-filter");
+let toggleTextEl = document.getElementById("toggle-text");
 let deckName = null;
 
 document.addEventListener("click", (event) => {
@@ -16,9 +17,21 @@ toggleDropdownEl.addEventListener("click", () => {
     if (optionsDropdownEl.style.display != "block") {
         optionsDropdownEl.style.display = "block";
         toggleDropdownEl.classList.toggle('open');
+        deckFilterEl.focus();
     } else {
         optionsDropdownEl.style.display = "none";
         toggleDropdownEl.classList.remove('open');
+    }
+})
+
+deckFilterEl.addEventListener("input", (e) => {
+    let toMatch = deckFilterEl.value;
+    for (let option of optionsDropdownEl.getElementsByClassName("deck-item")) {
+        if (option.getAttribute("data-val").startsWith(toMatch)) {
+            option.style.display = "block";
+        } else {
+            option.style.display = "none";
+        }
     }
 })
 
@@ -47,12 +60,13 @@ function loadPlaylistsList() {
             if (deckName == null) {
                 deckName = filename;
             }
-            toggleDropdownEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            toggleTextEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
             let option = document.createElement("div");
+            option.className = "deck-item";
             option.setAttribute("data-val", filename);
             option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
             option.addEventListener('click', (e) => {
-                toggleDropdownEl.textContent = e.target.getAttribute("data-val").replace(/\.[a-zA-Z0-9]+$/, '');
+                toggleTextEl.textContent = e.target.getAttribute("data-val").replace(/\.[a-zA-Z0-9]+$/, '');
                 deckName = e.target.getAttribute("data-val");
                 optionsDropdownEl.style.display = 'none';
                 toggleDropdownEl.classList.remove('open');

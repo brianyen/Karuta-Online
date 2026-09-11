@@ -50,7 +50,7 @@
       </p>
     </div>
     <div id="deck-select-popup">
-      <p class="text-popup">Please select a deck before creating a room.</p>
+      <p class="text-popup"></p>
     </div>
     <div id="index-menu">
       <div id="top-bar">
@@ -60,14 +60,18 @@
       <div id="create-div">
 
       <div id="playlist-select-div">
-        <div class="toggle-dropdown">Choose a Deck</div>
-        <div class="options-dropdown"></div>
+        <div class="toggle-dropdown">
+          <span id="toggle-text">Choose a Deck</span>
+        </div>
+        <div class="options-dropdown">
+          <input type="text" placeholder="Filter Deck Names" autocomplete="off" id="deck-filter" class="text-entry"/>
+        </div>
       </div>
 
       <div id="create-room" class="custom-button" onclick="sendCreateRequest()">Create a Room</div>
       </div>
       <div id="join-div">
-      <input type="text" id="room-code-input" placeholder="Enter a Room Code" autocomplete="off"/>
+      <input type="text" id="room-code-input" class="text-entry" placeholder="Enter a Room Code" autocomplete="off"/>
       <div id="join-room" class="custom-button" onclick="sendJoinRequest()">Join a Room</div>
       </div>
       <div id="deck-viewer-div">
