@@ -159,6 +159,21 @@ function loadPlaylistsList() {
             optionsDropdownEl.style.display = 'none';
             toggleDropdownEl.classList.remove('open');
         })
+        option.tabIndex = 0;
+        option.addEventListener('keydown', (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                option.click();
+            } else if (e.key === " ") {
+                e.preventDefault();
+            }   
+        })
+        option.addEventListener('keyup', (e) => {
+            if (e.key === " ") {
+                e.preventDefault();
+                option.click();
+            }
+        })
         optionsDropdownEl.appendChild(option);
     });
     })

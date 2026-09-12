@@ -36,6 +36,16 @@ deckFilterEl.addEventListener("input", (e) => {
 })
 
 function sendHome() {
+    if (
+        e.ctrlKey ||
+        e.metaKey ||
+        e.shiftKey ||
+        e.altKey ||
+        e.button !== 0
+    ) {
+        return;
+    }
+
     fetch("/", {
         method: "GET"
     })
@@ -70,6 +80,21 @@ function loadPlaylistsList() {
                 deckName = e.target.getAttribute("data-val");
                 optionsDropdownEl.style.display = 'none';
                 toggleDropdownEl.classList.remove('open');
+            })
+            option.tabIndex = 0;
+            option.addEventListener('keydown', (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    option.click();
+                } else if (e.key === " ") {
+                    e.preventDefault();
+                }   
+            })
+            option.addEventListener('keyup', (e) => {
+                if (e.key === " ") {
+                    e.preventDefault();
+                    option.click();
+                }
             })
             optionsDropdownEl.appendChild(option);
         });
