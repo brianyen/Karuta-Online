@@ -1,7 +1,51 @@
-let playlistSelectEl = document.getElementById("playlist-select");
 let tableEl = document.getElementById("deck-table");
+let playlistSelectDivEl = document.getElementById("playlist-select-div");
+let toggleDropdownEl = document.querySelector(".toggle-dropdown");
+let optionsDropdownEl = document.querySelector(".options-dropdown");
+let deckFilterEl = document.getElementById("deck-filter");
+let toggleTextEl = document.getElementById("toggle-text");
+let deckName = null;
+
+document.addEventListener("click", (event) => {
+    if (!playlistSelectDivEl.contains(event.target)) {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+});
+
+toggleDropdownEl.addEventListener("click", () => {
+    if (optionsDropdownEl.style.display != "block") {
+        optionsDropdownEl.style.display = "block";
+        toggleDropdownEl.classList.toggle('open');
+        deckFilterEl.focus();
+    } else {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+})
+
+deckFilterEl.addEventListener("input", (e) => {
+    let toMatch = deckFilterEl.value;
+    for (let option of optionsDropdownEl.getElementsByClassName("deck-item")) {
+        if (option.getAttribute("data-val").startsWith(toMatch)) {
+            option.style.display = "block";
+        } else {
+            option.style.display = "none";
+        }
+    }
+})
 
 function sendHome() {
+    if (
+        e.ctrlKey ||
+        e.metaKey ||
+        e.shiftKey ||
+        e.altKey ||
+        e.button !== 0
+    ) {
+        return;
+    }
+
     fetch("/", {
         method: "GET"
     })
@@ -21,20 +65,44 @@ function loadPlaylistsList() {
     fetch("/get-playlists")
     .then((response) => response.json())
     .then((data) => {
-    playlistSelectEl.innerHTML = "";
-    data.playlists.sort();
-    data.playlists.forEach((filename) => {
-        let option = document.createElement("option");
-        option.value = filename;
-        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
-        playlistSelectEl.appendChild(option);
-    });
+        data.playlists.sort();
+        data.playlists.forEach((filename) => {
+            if (deckName == null) {
+                deckName = filename;
+            }
+            toggleTextEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            let option = document.createElement("div");
+            option.className = "deck-item";
+            option.setAttribute("data-val", filename);
+            option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            option.addEventListener('click', (e) => {
+                toggleTextEl.textContent = e.target.getAttribute("data-val").replace(/\.[a-zA-Z0-9]+$/, '');
+                deckName = e.target.getAttribute("data-val");
+                optionsDropdownEl.style.display = 'none';
+                toggleDropdownEl.classList.remove('open');
+            })
+            option.tabIndex = 0;
+            option.addEventListener('keydown', (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    option.click();
+                } else if (e.key === " ") {
+                    e.preventDefault();
+                }   
+            })
+            option.addEventListener('keyup', (e) => {
+                if (e.key === " ") {
+                    e.preventDefault();
+                    option.click();
+                }
+            })
+            optionsDropdownEl.appendChild(option);
+        });
     })
     .catch((error) => console.error("Error:", error));
 }
 
 function loadDeck() {
-    let deckName = playlistSelectEl.value;
     if (deckName == null || deckName === "") {
         console.error("No deck selected from dropdown menu");
         return;
@@ -59,7 +127,6 @@ function loadDeck() {
         if (data.songs == null) {
             console.error("Didn't receive any songs from server");
         }
-        console.log(data.songs.length);
         data.songs.sort();
         for (let song of data.songs) {
             let row = document.createElement("tr");

@@ -1,14 +1,57 @@
 let roomCodeEl = document.getElementById("room-code-input");
 let helpEl = document.getElementById("help-popup");
 let menuEl = document.getElementById("index-menu");
-let playlistSelectEl = document.getElementById("playlist-select");
+let deckSelectPopUpEl = document.getElementById("deck-select-popup");
+let deckFilterEl = document.getElementById("deck-filter");
+let playlistSelectDivEl = document.getElementById("playlist-select-div");
+let toggleDropdownEl = document.querySelector(".toggle-dropdown");
+let toggleTextEl = document.getElementById("toggle-text");
+let optionsDropdownEl = document.querySelector(".options-dropdown");
+
+let deckName = null;
+
+document.addEventListener("click", (event) => {
+    if (!playlistSelectDivEl.contains(event.target)) {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+});
 
 roomCodeEl.addEventListener("input", (event) => {
     event.target.value = event.target.value.toUpperCase();
+});
+
+toggleDropdownEl.addEventListener("click", () => {
+    if (optionsDropdownEl.style.display != "block") {
+        optionsDropdownEl.style.display = "block";
+        toggleDropdownEl.classList.toggle('open');
+        deckFilterEl.focus();
+    } else {
+        optionsDropdownEl.style.display = "none";
+        toggleDropdownEl.classList.remove('open');
+    }
+})
+
+deckFilterEl.addEventListener("input", (e) => {
+    let toMatch = deckFilterEl.value;
+    for (let option of optionsDropdownEl.getElementsByClassName("deck-item")) {
+        if (option.getAttribute("data-val").startsWith(toMatch)) {
+            option.style.display = "block";
+        } else {
+            option.style.display = "none";
+        }
+    }
 })
 
 function sendCreateRequest() {
-    let deckName = playlistSelectEl.value;
+    if (deckName == null) {
+        deckSelectPopUpEl.innerHTML = "Please select a valid deck.";
+        deckSelectPopUpEl.style.display = "block";
+        setTimeout(() => {
+            deckSelectPopUpEl.style.display = "none";
+        }, 1500);
+        return;
+    }
     fetch("/create-room-rq", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,26 +147,45 @@ function loadPlaylistsList() {
     fetch("/get-playlists")
     .then((response) => response.json())
     .then((data) => {
-    playlistSelectEl.innerHTML = "";
     data.playlists.sort();
     data.playlists.forEach((filename) => {
-        let option = document.createElement("option");
-        option.value = filename;
-        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');;
-        playlistSelectEl.appendChild(option);
+        let option = document.createElement("div");
+        option.className = "deck-item";
+        option.setAttribute("data-val", filename);
+        option.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+        option.addEventListener('click', (e) => {
+            toggleTextEl.textContent = e.target.getAttribute("data-val").replace(/\.[a-zA-Z0-9]+$/, '');
+            deckName = e.target.getAttribute("data-val");
+            optionsDropdownEl.style.display = 'none';
+            toggleDropdownEl.classList.remove('open');
+        })
+        option.tabIndex = 0;
+        option.addEventListener('keydown', (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                option.click();
+            } else if (e.key === " ") {
+                e.preventDefault();
+            }   
+        })
+        option.addEventListener('keyup', (e) => {
+            if (e.key === " ") {
+                e.preventDefault();
+                option.click();
+            }
+        })
+        optionsDropdownEl.appendChild(option);
     });
     })
     .catch((error) => console.error("Error:", error));
 }
 
 function showHelp() {
-    console.log("showing help")
     helpEl.style.display = "block";
     menuEl.style.display = "none";
 }
 
 function hideHelp() {
-    console.log("hiding help")
     helpEl.style.display = "none";
     menuEl.style.display = "block";
 }

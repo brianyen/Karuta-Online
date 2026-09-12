@@ -4,6 +4,11 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Karuta Online</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='/favicon/favicon-96x96.png') }}" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='/favicon/favicon.svg') }}" />
+    <link rel="shortcut icon" href="{{ url_for('static', filename='/favicon/favicon.ico') }}" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='/favicon/apple-touch-icon.png') }}" />
+    <link rel="manifest" href="{{ url_for('static', filename='/favicon/site.webmanifest') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">
   </head>
   <body>
@@ -44,17 +49,29 @@
         Currently, your opponent doesn't see what changes you make (they see the original formation), and you do not see what movements your opponents make.
       </p>
     </div>
+    <div id="deck-select-popup">
+      <p class="text-popup"></p>
+    </div>
     <div id="index-menu">
       <div id="top-bar">
         <div onclick="showHelp()" id="go-help" class="custom-button">Help</div>
       </div>
       <h1 id="title">Karuta Online</h1>
       <div id="create-div">
-      <select id="playlist-select"></select>
+
+      <div id="playlist-select-div">
+        <div class="toggle-dropdown">
+          <span id="toggle-text">Choose a Deck</span>
+        </div>
+        <div class="options-dropdown">
+          <input type="text" placeholder="Filter Deck Names" autocomplete="off" id="deck-filter" class="text-entry"/>
+        </div>
+      </div>
+
       <div id="create-room" class="custom-button" onclick="sendCreateRequest()">Create a Room</div>
       </div>
       <div id="join-div">
-      <input type="text" id="room-code-input" placeholder="Enter a Room Code"/>
+      <input type="text" id="room-code-input" class="text-entry" placeholder="Enter a Room Code" autocomplete="off"/>
       <div id="join-room" class="custom-button" onclick="sendJoinRequest()">Join a Room</div>
       </div>
       <div id="deck-viewer-div">

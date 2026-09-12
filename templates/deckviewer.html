@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Karuta Room</title>
+    <title>Karuta Viewer</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='/favicon/favicon-96x96.png') }}" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='/favicon/favicon.svg') }}" />
+    <link rel="shortcut icon" href="{{ url_for('static', filename='/favicon/favicon.ico') }}" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='/favicon/apple-touch-icon.png') }}" />
+    <link rel="manifest" href="{{ url_for('static', filename='/favicon/site.webmanifest') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/deckviewer.css') }}">
 </head>
 <body>
@@ -14,7 +19,14 @@
         <h1 class="pgram"><span>Karuta Deck Viewer</span></h1>
     </div>
     <div id="options-div">
-        <select id="playlist-select"></select>
+        <div id="playlist-select-div">
+            <div class="toggle-dropdown">
+                <span id="toggle-text">Choose a Deck</span>
+            </div>
+            <div class="options-dropdown">
+                <input type="text" placeholder="Filter Deck Names" autocomplete="off" id="deck-filter" class="text-entry"/>
+            </div>
+        </div>
         <div onclick="loadDeck()" class="custom-button">Load</div>
     </div>
     <div>
