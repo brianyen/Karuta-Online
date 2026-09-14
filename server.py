@@ -426,8 +426,7 @@ def multiplayer():
   room_code = request.args.get("room")
   if room_code in room_dict["rooms"]: # more later
     return render_template("multiplayer.html", room=room_code)
-  return jsonify({"error": "Room invalid"}), 500
-
+  return render_template("invalidroom.html")
 @app.route('/deckviewer')
 def view_decks():
   return render_template("deckviewer.html")
