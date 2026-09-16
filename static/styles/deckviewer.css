@@ -116,9 +116,8 @@ th {
     outline: 1px solid maroon;;
 }
 .deck-item {
-    overflow-x: scroll;
+    overflow-x: auto;
     white-space: nowrap;
-    text-overflow: scroll;
 }
 .options-dropdown {
     display: none;
