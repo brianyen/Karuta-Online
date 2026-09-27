@@ -188,9 +188,8 @@ body {
     outline: 1px solid maroon;;
 }
 .deck-item {
-    overflow-x: scroll;
+    overflow-x: auto;
     white-space: nowrap;
-    text-overflow: scroll;
 }
 .game-space {
     border: 3px solid black;

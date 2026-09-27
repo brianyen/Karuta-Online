@@ -183,7 +183,6 @@ async function loadCustom(deckName) {
                         try {
                             let cell = row.getElementsByClassName("cardImage")[0];
                             let img = document.createElement("img");
-                            img.style.width = "100px";
                             img.style.height = "100px";
                             img.src = data[k];
                             cell.appendChild(img);
