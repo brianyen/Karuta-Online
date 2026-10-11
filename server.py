@@ -43,6 +43,9 @@ def join_game(data):
       player_entry["sid"] = request.sid
       player_entry["status"] = PlayerState.CONNECT
 
+      room_entry = room_dict["rooms"][player_entry["room_code"]]
+      unready_with_lock(player_entry, room_entry)
+
       # stuff down here might not be needed. kept for debugging for now mostly
       room_entry = room_dict["rooms"].get(room_key)
       player_info = room_entry["player_info"]
@@ -99,13 +102,8 @@ def disconnect_room():
   # set player status to disconnect --> set timer
   player_entry = room_dict["players"].get(player_id)
   player_entry["status"] = PlayerState.DISCONNECT
-  if player_entry["ready"]:
-    player_entry["ready"] = False
-    room_entry = room_dict["rooms"][player_entry["room_code"]]
-    with room_entry["lock"]:
-      room_entry["ready_count"] -= 1
-      if (room_entry["ready_count"] < 0):
-        print("ATTENTION: READY COUNT IN THE NEGATIVES")
+  room_entry = room_dict["rooms"][player_entry["room_code"]]
+  unready_with_lock(player_entry, room_entry)
   handle_disconnect_timer(socketio, room_dict, player_id, player_entry["room_code"], request.sid)
 
 @socketio.on('player_ready')

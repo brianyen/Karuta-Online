@@ -242,6 +242,7 @@ socket.on('round_results', (e) => {
         card.style.outline = "";
         card.style.outlineOffset = "";
     })
+    wrongCards = [];
 
     updateScores();
 
@@ -257,8 +258,7 @@ socket.on('fault_response', (e) => {
     console.log("Handling faults")
     let displayName = mapping[currentSong] || currentSong;
     Object.keys(e.args).forEach(key => {
-        // deal with this later later
-        if (key === playerID) { // needs to be card replacement later on
+        if (key === playerID) {
             if (e.args[key] == 1) {
                 updateLogs("FAULT: You faulted when " + displayName + " was playing.");
                 ownScore += 1;
@@ -425,11 +425,15 @@ async function startSyncHandler(e) {
         }
 
         const response = await fetch(e.audio_url);
+        if (!response.ok) {
+            throw new Error(`Error with fetching audio: ${response.status}`);
+        }
         const buff = await response.arrayBuffer();
         currentSongBuff = await audioContext.decodeAudioData(buff);
         socket.emit('sync_ready', { room: room_key, player_id: playerID });
-    } catch (e) {
-        console.error("Error: " + e)
+    } catch (error) {
+        setTimeout(() => {startSyncHandler(e)}, 1000);
+        console.error("Error: " + error)
     }
 }
 
@@ -458,11 +462,12 @@ async function passCardsHandler(e) {
     }
 
     passActive = true;
+    toPassCards = [];
     for (let card of gameSpaceSelfEl.children) {
         if (card.id == "") {
             continue;
         } 
-        if (card.style.outline != "") {
+        if (card.style.outline != "4px solid red") {
             addReplacementHandlers = true;
             continue;
         }
@@ -473,6 +478,7 @@ async function passCardsHandler(e) {
 
 function passCardsClickHandler(event) {
     if (toPass <= 0) {
+        return;
     }
     let target = (event.target.id === "") ? event.target.parentElement : event.target;
     for (let i = 0; i < toPassCards.length; i++) {
