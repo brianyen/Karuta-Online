@@ -621,8 +621,7 @@ function createCardElement(songTitle) {
     context.fillStyle = "black";
     context.textAlign = "center";
     context.textBaseline = "top";
-    context.shadowBlur = 0.001; 
-    context.shadowColor = 'transparent';
+    context.globalAlpha = 0.999;
     if (cardTitle.slice(-4) === ".mp3") {
         cardTitle = cardTitle.slice(0, -4);
     } 
