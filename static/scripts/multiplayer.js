@@ -984,7 +984,7 @@ toggleDropdownEl.addEventListener("click", () => {
 deckFilterEl.addEventListener("input", (e) => {
     let toMatch = deckFilterEl.value;
     for (let option of optionsDropdownEl.getElementsByClassName("deck-item")) {
-        if (option.getAttribute("data-val").startsWith(toMatch)) {
+        if (option.getAttribute("data-val").toUpperCase().startsWith(toMatch.toUpperCase())) {
             option.style.display = "block";
         } else {
             option.style.display = "none";
