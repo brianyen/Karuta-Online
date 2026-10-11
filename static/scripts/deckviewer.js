@@ -27,7 +27,7 @@ toggleDropdownEl.addEventListener("click", () => {
 deckFilterEl.addEventListener("input", (e) => {
     let toMatch = deckFilterEl.value;
     for (let option of optionsDropdownEl.getElementsByClassName("deck-item")) {
-        if (option.getAttribute("data-val").startsWith(toMatch)) {
+        if (option.getAttribute("data-val").toUpperCase().startsWith(toMatch.toUpperCase())) {
             option.style.display = "block";
         } else {
             option.style.display = "none";
@@ -62,6 +62,7 @@ function sendHome() {
 }
 
 function loadPlaylistsList() {
+    deckName = null;
     fetch("/get-playlists")
     .then((response) => response.json())
     .then((data) => {
@@ -69,8 +70,8 @@ function loadPlaylistsList() {
         data.playlists.forEach((filename) => {
             if (deckName == null) {
                 deckName = filename;
+                toggleTextEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
             }
-            toggleTextEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
             let option = document.createElement("div");
             option.className = "deck-item";
             option.setAttribute("data-val", filename);
