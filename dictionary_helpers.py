@@ -318,6 +318,14 @@ def init_room(room_dict, room_code, deck):
 
     return jsonify({ "url": f"/multiplayer?room={room_code}"})
 
+def unready_with_lock(player_entry, room_entry):
+    with room_entry["lock"]:
+        if player_entry["ready"]:
+            player_entry["ready"] = False
+            room_entry["ready_count"] -= 1
+            if (room_entry["ready_count"] < 0):
+                print("ATTENTION: READY COUNT IN THE NEGATIVES")
+
 def emit_room_status_switch(room_dict, room_code, winner=""):
     room_entry = room_dict["rooms"][room_code]
     with room_entry["lock"]:
