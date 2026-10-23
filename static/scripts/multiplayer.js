@@ -464,10 +464,10 @@ async function passCardsHandler(e) {
     passActive = true;
     toPassCards = [];
     for (let card of gameSpaceSelfEl.children) {
-        if (card.id == "") {
+        if (card.id === "") {
             continue;
         } 
-        if (card.style.outline != "4px solid red") {
+        if (card.style.outline.includes("red")) {
             addReplacementHandlers = true;
             continue;
         }
@@ -478,6 +478,7 @@ async function passCardsHandler(e) {
 
 function passCardsClickHandler(event) {
     if (toPass <= 0) {
+        console.log("topass too low: " + toPass)
         return;
     }
     let target = (event.target.id === "") ? event.target.parentElement : event.target;
