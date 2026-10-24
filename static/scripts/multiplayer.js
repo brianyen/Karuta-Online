@@ -74,6 +74,8 @@ const socket = io();
 gainControl.gain.value = parseFloat(volumeEl.value);
 gainControl.connect(audioContext.destination);
 
+//oscillate.frequency.value = 20;
+//gainSilent.gain.setValueAtTime(0.0005, audioContext.currentTime);
 gainSilent.gain.setValueAtTime(0, audioContext.currentTime);
 oscillate.connect(gainSilent);
 gainSilent.connect(audioContext.destination);
