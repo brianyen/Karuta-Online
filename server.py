@@ -193,8 +193,7 @@ def player_response(data):
     player_entry["response_time"] = response_time
 
     if response_time < 0: # tapped out
-      print(f"TAPOUT: GOT A TAPOUT FOR SONG {room_entry["current_song"]} IN ROOM {room_key}")
-      player_entry["response_time"] == -2
+      print(f"TAPOUT: GOT A TAPOUT FOR SONG {room_entry["current_song"]} IN ROOM {room_key} FROM PLAYER {player_id}")
       if other_response_time == -2: # other player tapped out
         callback = Callback.PASS
       elif other_response_time == -1: # still waiting on other player
@@ -207,7 +206,6 @@ def player_response(data):
         error_string = "ATTENTION: tracked player response time is negative number besides -1, -2"
     else: # got the card
       print(f"SUCCESS: GOT A CORRECT RESPONSE FOR SONG {room_entry["current_song"]} IN ROOM {room_key}, TIME IS {response_time}")
-      player_entry["response_time"] == response_time
       if other_response_time == -2: # other player tapped out
         callback = Callback.WINNER
         winner_id = player_id
