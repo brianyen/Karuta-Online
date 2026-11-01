@@ -113,7 +113,7 @@ def handle_disconnect_timer(socketio, room_dict, player_id, room_code, sid):
     player_entry = room_dict["players"].get(player_id)
 
     if player_entry and player_entry["status"] == PlayerState.DISCONNECT and room_code == player_entry["room_code"]:
-        if sid != room_dict["players_sid"].get(player_id):
+        if sid != player_entry["sid"]:
             remove_player_from_room(room_dict, player_id, room_code)
 
 def ping_cycle(socketio, room_dict, player_id):

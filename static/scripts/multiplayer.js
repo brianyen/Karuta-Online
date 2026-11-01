@@ -59,7 +59,7 @@ let currentNode = null;
 let currentSong = "";
 let correctSide = "";
 let nextRoom = "";
-let nextDeckName = "";
+let nextDeckName = null;
 let init = false;
 let addReplacementHandlers = false;
 let canTapOut = true;
@@ -905,10 +905,8 @@ function loadPlaylistsList() {
     .then((data) => {
         data.playlists.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         data.playlists.forEach((filename) => {
-            if (nextDeckName == null) {
-                nextDeckName = filename;
-            }
             toggleTextEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            nextDeckName = filename;
             let option = document.createElement("div");
             option.className = "deck-item";
             option.setAttribute("data-val", filename);
