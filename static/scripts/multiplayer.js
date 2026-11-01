@@ -74,9 +74,8 @@ const socket = io();
 gainControl.gain.value = parseFloat(volumeEl.value);
 gainControl.connect(audioContext.destination);
 
-//oscillate.frequency.value = 20;
-//gainSilent.gain.setValueAtTime(0.0005, audioContext.currentTime);
-gainSilent.gain.setValueAtTime(0, audioContext.currentTime);
+oscillate.frequency.value = 20;
+gainSilent.gain.setValueAtTime(0.0005, audioContext.currentTime);
 oscillate.connect(gainSilent);
 gainSilent.connect(audioContext.destination);
 oscillate.start();
@@ -881,8 +880,18 @@ function addWrappedCanvasText(context, text, x, y, widthLimit, yOffset) {
 
         if (projectedWidth > widthLimit && currentLine != "") {
             context.fillText(currentLine.trim(), x, y);
-            currentLine = wordArray[i] + " ";
+            currentLine = "";
+            i--;
             y += yOffset;
+        } else if (projectedWidth > widthLimit && currentLine === "") {
+            let half = wordArray[i].length / 2;
+            let first = wordArray[i].substring(0, half);
+            let second = wordArray[i].substring(half);
+            context.fillText(first.trim() + "...", x, y);
+            y += yOffset;
+            wordArray[i] = second;
+            i--;
+            currentLine = "";
         } else {
             currentLine = test;
         }
@@ -894,7 +903,9 @@ function loadPlaylistsList() {
     fetch("/get-playlists")
     .then((response) => response.json())
     .then((data) => {
-        data.playlists.sort();
+        data.playlists.sort((a, b) => {
+            a.localeCompare(b, undefined, { sensitivity: 'base' })
+        });
         data.playlists.forEach((filename) => {
             if (nextDeckName == null) {
                 nextDeckName = filename;
