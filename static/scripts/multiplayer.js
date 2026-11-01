@@ -189,7 +189,7 @@ socket.on('round_results', (e) => {
     if (target != null && winner === "") {
         addNextCard(target, add, faultParams).then((res) => {
             if (!res) {
-                target.removeEventListener("click", handleSongChoice);
+                target.removeEventListener("mousedown", handleSongChoice);
                 target.innerHTML = "";
                 target.style.border = "none";
                 target.style.backgroundColor = "transparent";
@@ -207,7 +207,7 @@ socket.on('round_results', (e) => {
     } else if (target != null) {
         target.style.outline = "4px solid red";
         target.style.outlineOffset = "-4px";
-        target.removeEventListener("click", handleSongChoice);
+        target.removeEventListener("mousedown", handleSongChoice);
         target.draggable = false;
         setTimeout(() => {
             target.innerHTML = "";
@@ -341,7 +341,6 @@ socket.on('re_emission', (e) => {
     deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
     countdownEl.innerHTML = "Round Started"
     readyDivEl.style.display = 'none';
-    readyButtonEl.style.backgroundColor = "#d0d0d0";
     tapoutDivEl.style.display = 'block';
     correct = true;
     faultedSelf = -1;
@@ -472,7 +471,7 @@ async function passCardsHandler(e) {
             addReplacementHandlers = true;
             continue;
         }
-        card.removeEventListener("click", handleSongChoice);
+        card.removeEventListener("mousedown", handleSongChoice);
         card.addEventListener("click", passCardsClickHandler);
     }
 }
@@ -513,7 +512,7 @@ function passCardsClickHandler(event) {
                 continue;
             } 
             card.removeEventListener("click", passCardsClickHandler);
-            card.addEventListener("click", handleSongChoice);
+            card.addEventListener("mousedown", handleSongChoice);
         }
         addReplacementHandlers = false;
         socket.emit('pass_done', { cards: params, room: room_key, player_id: playerID });
@@ -531,7 +530,7 @@ function handleSongChoice(event) {
 
     if (currentSong === chosenTitle) {
         correct = true;
-        target.removeEventListener("click", handleSongChoice);
+        target.removeEventListener("mousedown", handleSongChoice);
         target.innerHTML = "";
         target.style.border = "none";
         target.style.backgroundColor = "transparent";
@@ -619,7 +618,7 @@ function createCardElement(songTitle) {
     if (addReplacementHandlers) {
         songCard.addEventListener("click", passCardsClickHandler);
     } else {
-        songCard.addEventListener("click", handleSongChoice);
+        songCard.addEventListener("mousedown", handleSongChoice);
     }
 
     addDragEvents(songCard);
