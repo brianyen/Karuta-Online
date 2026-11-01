@@ -180,7 +180,8 @@ def player_response(data):
   callback = Callback.WAITING
 
   with room_entry["lock"]:
-    if room_entry["status"] != RoomState.STARTED_SONG:
+    if room_entry["status"] != RoomState.STARTED_SONG and (data.get('response_time') >= 0 or (room_entry["status"] != RoomState.STARTED_SYNC)):
+      print(f"DROPPED PLAYER NON-TAPOUT RESPONSE: ROOM IS {room_key}, SONG IS {room_entry["current song"]}, STATE IS {room_entry["status"]}, PLAYER IS {player_id}, RESP TIME IS {data.get('response_time')}")
       return
 
     response_time = data.get('response_time')

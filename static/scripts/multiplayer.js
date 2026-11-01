@@ -736,6 +736,7 @@ function tapOut() {
     if (!canTapOut) {
         return;
     }
+    console.log("attempting to tap out");
     correct = true;
     countdownEl.innerHTML = ("Waiting for round results...")
     socket.emit('player_response', { player_id: playerID, room: room_key, response_time: -2 })
