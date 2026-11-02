@@ -46,6 +46,7 @@ let toPassCards = [];
 let wrongCards = [];
 let timeoutActive = false;
 let passActive = false;
+let gameFinished = false;
 
 let params = new URLSearchParams(document.location.search);
 let room_key = params.get("room"); 
@@ -353,6 +354,7 @@ socket.on('re_emission', (e) => {
 })
 
 socket.on('game_finished', (e) => {
+    gameFinished = true;
     finishEl.style.display = "block";
     if (e.winner === playerID) {
         finishMsgEl.innerHTML = "Game is finished! You won.";
@@ -397,19 +399,7 @@ socket.on('room_full', () => {
     alert("issue while joining room, it may be full")
 })
 
-socket.on('confirm_message', (e) => {
-    let newMessage = document.createElement("div");
-    newMessage.className = "chat-message ";
-    if (e.source === playerID) {
-        newMessage.className += "own-message";
-        newMessage.innerHTML += `You: ${e.text}`;
-    } else {
-        newMessage.className += "opponent-message";
-        newMessage.innerHTML += `Opponent: ${e.text}`;
-    }
-    chatHistoryEl.appendChild(newMessage);
-    chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-})
+socket.on('confirm_message', (e) => confirmChat(e));
 
 socket.on('ping_check', (server_callback) => { server_callback(); })
 
@@ -850,10 +840,14 @@ function replayRoom() {
     .catch((error) => console.error("Error:", error));
 }
 
-function toggleChatVisibility() {
-    if (chatEl.style.display != "block") {
+function toggleChatVisibility(show) {
+    if (show === null) {
+        show = chatEl.style.display != "block";
+    }
+    if (show) {
         chatEl.style.display = "block";
         chatDivEl.style.height = "40%";
+        chatTextEl.focus();
     } else {
         chatEl.style.display = "none";
         chatDivEl.style.height = "auto";
@@ -867,7 +861,25 @@ function sendChat() {
         return;
     }
 
-    socket.emit('chat_message', { room: room_key, player_id: playerID, text: message });
+    if (!gameFinished) {
+        socket.emit('chat_message', { room: room_key, player_id: playerID, text: message });
+    } else {
+        confirmChat({ source: playerID, text: message });
+    }
+}
+
+function confirmChat(chatParams) {
+    let newMessage = document.createElement("div");
+    newMessage.className = "chat-message ";
+    if (chatParams.source === playerID) {
+        newMessage.className += "own-message";
+        newMessage.innerHTML += `You: ${chatParams.text}`;
+    } else {
+        newMessage.className += "opponent-message";
+        newMessage.innerHTML += `Opponent: ${chatParams.text}`;
+    }
+    chatHistoryEl.appendChild(newMessage);
+    chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
 }
 
 function addWrappedCanvasText(context, text, x, y, widthLimit, yOffset) {
@@ -975,6 +987,16 @@ chatTextEl.addEventListener("keyup", (e) => {
     event.preventDefault();
     if (event.keyCode === 13) {
         sendChat();
+    }
+});
+
+document.addEventListener("keyup", (e) => {
+    event.preventDefault();
+    if (event.key === "Escape") {
+        toggleChatVisibility(false);
+    }
+    if (event.key === "o" || event.key === "O") {
+        toggleChatVisibility(true);
     }
 });
 
