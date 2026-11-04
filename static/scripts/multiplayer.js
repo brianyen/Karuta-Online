@@ -46,6 +46,7 @@ let toPassCards = [];
 let wrongCards = [];
 let timeoutActive = false;
 let passActive = false;
+let gameFinished = false;
 
 let params = new URLSearchParams(document.location.search);
 let room_key = params.get("room"); 
@@ -59,7 +60,7 @@ let currentNode = null;
 let currentSong = "";
 let correctSide = "";
 let nextRoom = "";
-let nextDeckName = "";
+let nextDeckName = null;
 let init = false;
 let addReplacementHandlers = false;
 let canTapOut = true;
@@ -74,9 +75,8 @@ const socket = io();
 gainControl.gain.value = parseFloat(volumeEl.value);
 gainControl.connect(audioContext.destination);
 
-//oscillate.frequency.value = 20;
-//gainSilent.gain.setValueAtTime(0.0005, audioContext.currentTime);
-gainSilent.gain.setValueAtTime(0, audioContext.currentTime);
+oscillate.frequency.value = 20;
+gainSilent.gain.setValueAtTime(0.0005, audioContext.currentTime);
 oscillate.connect(gainSilent);
 gainSilent.connect(audioContext.destination);
 oscillate.start();
@@ -190,7 +190,7 @@ socket.on('round_results', (e) => {
     if (target != null && winner === "") {
         addNextCard(target, add, faultParams).then((res) => {
             if (!res) {
-                target.removeEventListener("click", handleSongChoice);
+                target.removeEventListener("mousedown", handleSongChoice);
                 target.innerHTML = "";
                 target.style.border = "none";
                 target.style.backgroundColor = "transparent";
@@ -208,7 +208,7 @@ socket.on('round_results', (e) => {
     } else if (target != null) {
         target.style.outline = "4px solid red";
         target.style.outlineOffset = "-4px";
-        target.removeEventListener("click", handleSongChoice);
+        target.removeEventListener("mousedown", handleSongChoice);
         target.draggable = false;
         setTimeout(() => {
             target.innerHTML = "";
@@ -342,7 +342,6 @@ socket.on('re_emission', (e) => {
     deck = e.deck.replace(/\.[a-zA-Z0-9]+$/, '');
     countdownEl.innerHTML = "Round Started"
     readyDivEl.style.display = 'none';
-    readyButtonEl.style.backgroundColor = "#d0d0d0";
     tapoutDivEl.style.display = 'block';
     correct = true;
     faultedSelf = -1;
@@ -355,6 +354,7 @@ socket.on('re_emission', (e) => {
 })
 
 socket.on('game_finished', (e) => {
+    gameFinished = true;
     finishEl.style.display = "block";
     if (e.winner === playerID) {
         finishMsgEl.innerHTML = "Game is finished! You won.";
@@ -399,19 +399,7 @@ socket.on('room_full', () => {
     alert("issue while joining room, it may be full")
 })
 
-socket.on('confirm_message', (e) => {
-    let newMessage = document.createElement("div");
-    newMessage.className = "chat-message ";
-    if (e.source === playerID) {
-        newMessage.className += "own-message";
-        newMessage.innerHTML += `You: ${e.text}`;
-    } else {
-        newMessage.className += "opponent-message";
-        newMessage.innerHTML += `Opponent: ${e.text}`;
-    }
-    chatHistoryEl.appendChild(newMessage);
-    chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-})
+socket.on('confirm_message', (e) => confirmChat(e));
 
 socket.on('ping_check', (server_callback) => { server_callback(); })
 
@@ -473,7 +461,7 @@ async function passCardsHandler(e) {
             addReplacementHandlers = true;
             continue;
         }
-        card.removeEventListener("click", handleSongChoice);
+        card.removeEventListener("mousedown", handleSongChoice);
         card.addEventListener("click", passCardsClickHandler);
     }
 }
@@ -514,7 +502,7 @@ function passCardsClickHandler(event) {
                 continue;
             } 
             card.removeEventListener("click", passCardsClickHandler);
-            card.addEventListener("click", handleSongChoice);
+            card.addEventListener("mousedown", handleSongChoice);
         }
         addReplacementHandlers = false;
         socket.emit('pass_done', { cards: params, room: room_key, player_id: playerID });
@@ -532,7 +520,7 @@ function handleSongChoice(event) {
 
     if (currentSong === chosenTitle) {
         correct = true;
-        target.removeEventListener("click", handleSongChoice);
+        target.removeEventListener("mousedown", handleSongChoice);
         target.innerHTML = "";
         target.style.border = "none";
         target.style.backgroundColor = "transparent";
@@ -620,7 +608,7 @@ function createCardElement(songTitle) {
     if (addReplacementHandlers) {
         songCard.addEventListener("click", passCardsClickHandler);
     } else {
-        songCard.addEventListener("click", handleSongChoice);
+        songCard.addEventListener("mousedown", handleSongChoice);
     }
 
     addDragEvents(songCard);
@@ -737,6 +725,7 @@ function tapOut() {
     if (!canTapOut) {
         return;
     }
+    console.log("attempting to tap out");
     correct = true;
     countdownEl.innerHTML = ("Waiting for round results...")
     socket.emit('player_response', { player_id: playerID, room: room_key, response_time: -2 })
@@ -851,10 +840,14 @@ function replayRoom() {
     .catch((error) => console.error("Error:", error));
 }
 
-function toggleChatVisibility() {
-    if (chatEl.style.display != "block") {
+function toggleChatVisibility(show) {
+    if (show === null) {
+        show = chatEl.style.display != "block";
+    }
+    if (show) {
         chatEl.style.display = "block";
         chatDivEl.style.height = "40%";
+        chatTextEl.focus();
     } else {
         chatEl.style.display = "none";
         chatDivEl.style.height = "auto";
@@ -868,7 +861,25 @@ function sendChat() {
         return;
     }
 
-    socket.emit('chat_message', { room: room_key, player_id: playerID, text: message });
+    if (!gameFinished) {
+        socket.emit('chat_message', { room: room_key, player_id: playerID, text: message });
+    } else {
+        confirmChat({ source: playerID, text: message });
+    }
+}
+
+function confirmChat(chatParams) {
+    let newMessage = document.createElement("div");
+    newMessage.className = "chat-message ";
+    if (chatParams.source === playerID) {
+        newMessage.className += "own-message";
+        newMessage.innerHTML += `You: ${chatParams.text}`;
+    } else {
+        newMessage.className += "opponent-message";
+        newMessage.innerHTML += `Opponent: ${chatParams.text}`;
+    }
+    chatHistoryEl.appendChild(newMessage);
+    chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
 }
 
 function addWrappedCanvasText(context, text, x, y, widthLimit, yOffset) {
@@ -881,8 +892,18 @@ function addWrappedCanvasText(context, text, x, y, widthLimit, yOffset) {
 
         if (projectedWidth > widthLimit && currentLine != "") {
             context.fillText(currentLine.trim(), x, y);
-            currentLine = wordArray[i] + " ";
+            currentLine = "";
+            i--;
             y += yOffset;
+        } else if (projectedWidth > widthLimit && currentLine === "") {
+            let half = wordArray[i].length / 2;
+            let first = wordArray[i].substring(0, half);
+            let second = wordArray[i].substring(half);
+            context.fillText(first.trim() + "...", x, y);
+            y += yOffset;
+            wordArray[i] = second;
+            i--;
+            currentLine = "";
         } else {
             currentLine = test;
         }
@@ -894,12 +915,10 @@ function loadPlaylistsList() {
     fetch("/get-playlists")
     .then((response) => response.json())
     .then((data) => {
-        data.playlists.sort();
+        data.playlists.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         data.playlists.forEach((filename) => {
-            if (nextDeckName == null) {
-                nextDeckName = filename;
-            }
             toggleTextEl.textContent = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+            nextDeckName = filename;
             let option = document.createElement("div");
             option.className = "deck-item";
             option.setAttribute("data-val", filename);
@@ -968,6 +987,16 @@ chatTextEl.addEventListener("keyup", (e) => {
     event.preventDefault();
     if (event.keyCode === 13) {
         sendChat();
+    }
+});
+
+document.addEventListener("keyup", (e) => {
+    event.preventDefault();
+    if (event.key === "Escape") {
+        toggleChatVisibility(false);
+    }
+    if (event.key === "o" || event.key === "O") {
+        toggleChatVisibility(true);
     }
 });
 

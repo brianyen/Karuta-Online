@@ -57,13 +57,13 @@ def add_player_to_room(socketio, room_dict, player_id, room_code, request):
                 "contested_song": []
             }
             room_dict["players_sid"][request.sid] = player_id
-            ping_cycle(socketio, room_dict, player_id, request)
         else:
             room_full = True
     if room_full:
         emit('room_full', to=request.sid)
         return 1
     
+    socketio.start_background_task(ping_cycle, socketio, room_dict, player_id)
     join_room(room_code)
     with room_entry["lock"]:
         if len(player_info) == 1: # temporary state stuff
@@ -113,10 +113,10 @@ def handle_disconnect_timer(socketio, room_dict, player_id, room_code, sid):
     player_entry = room_dict["players"].get(player_id)
 
     if player_entry and player_entry["status"] == PlayerState.DISCONNECT and room_code == player_entry["room_code"]:
-        if sid != room_dict["players_sid"].get(player_id):
+        if sid != player_entry["sid"]:
             remove_player_from_room(room_dict, player_id, room_code)
 
-def ping_cycle(socketio, room_dict, player_id, request):
+def ping_cycle(socketio, room_dict, player_id):
     outlying_ping = False
     ping_timestamp = time.time()
     player_entry = room_dict["players"].get(player_id)
@@ -129,30 +129,15 @@ def ping_cycle(socketio, room_dict, player_id, request):
             return
         nonlocal outlying_ping
         outlying_ping = False
-        rtt = time.time() - ping_timestamp
-
-        if len(rtt_queue) >= 5:
-            rtt_queue.popleft()
-        rtt_queue.append(rtt)
+        rtt_queue.append(time.time() - ping_timestamp)
     
-    while True:
-        if room_dict["players"].get(player_id) == None:
-            return
-        sid = room_dict["players_sid"].get(player_id)
-        if sid == None:
-            return
+    while room_dict["players"].get(player_id) is player_entry:
         if outlying_ping:
-            if len(rtt_queue) >= 5:
-                rtt_queue.popleft()
             rtt_queue.append(3)
             
-            ping_timestamp = time.time()
-            outlying_ping = True
-            socketio.emit('ping_check', to=sid, callback=ping_response)
-        else:
-            ping_timestamp = time.time()
-            outlying_ping = True
-            socketio.emit('ping_check', to=sid, callback=ping_response)
+        ping_timestamp = time.time()
+        outlying_ping = True
+        socketio.emit('ping_check', to=player_entry["sid"], callback=ping_response)
         socketio.sleep(5)
 
 def song_choice(room_dict, player_id, room_code, from_join=False):
@@ -244,8 +229,8 @@ def handle_card_buffer(socketio, room_dict, player_id, room_code):
     with room_entry["lock"]:
         for id in room_entry["player_info"]:
             rtt_queue = room_dict["players"][id].get("rtts")
-            for rtt in rtt_queue:
-                to_sleep = max(to_sleep, 1.3 * rtt)
+            if len(rtt_queue) >= 4:
+                to_sleep = max(0.75, rtt_queue[2] * 1.3)
 
     print("to_sleep chosen to be:", to_sleep)
     socketio.sleep(to_sleep)

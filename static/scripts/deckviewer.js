@@ -65,8 +65,8 @@ function loadPlaylistsList() {
     deckName = null;
     fetch("/get-playlists")
     .then((response) => response.json())
-    .then((data) => {
-        data.playlists.sort();
+    .then((data) => {    
+        data.playlists.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         data.playlists.forEach((filename) => {
             if (deckName == null) {
                 deckName = filename;
